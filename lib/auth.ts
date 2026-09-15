@@ -11,7 +11,8 @@ export async function createSession(userId: string) {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await db.session.create({ data: { userId, tokenHash: hash(token), expiresAt } });
-  (await cookies()).set(COOKIE, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", expires: expiresAt });
+  const secure = process.env.COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production";
+  (await cookies()).set(COOKIE, token, { httpOnly: true, sameSite: "lax", secure, path: "/", expires: expiresAt });
 }
 
 export async function currentUser() {

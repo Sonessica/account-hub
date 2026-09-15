@@ -32,9 +32,9 @@ Account Hub V1.0.0 是一个单用户、自托管的手工账号中心，用于�
    docker compose up -d --build
    ```
 
-3. 打开 `http://NAS-IP:3100`，首次访问会要求创建管理员。
+3. 默认只监听 `127.0.0.1:3100`，用于反向代理。若需先在局域网测试，把 `.env` 中的 `ACCOUNT_HUB_BIND_ADDRESS` 改为 NAS 的局域网 IP，并临时设置 `COOKIE_SECURE=false`，然后打开 `http://NAS-IP:3100`。首次访问会要求创建管理员。
 
-生产环境应通过 QNAP 反向代理提供 HTTPS，且不要将 PostgreSQL 端口映射到宿主机。
+生产环境应通过 QNAP 反向代理提供 HTTPS，并使用 `COOKIE_SECURE=true`；不要将 PostgreSQL 端口映射到宿主机。
 
 ## 本地开发
 

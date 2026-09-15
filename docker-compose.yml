@@ -8,8 +8,9 @@ services:
     environment:
       DATABASE_URL: postgresql://account_hub:${POSTGRES_PASSWORD}@postgres:5432/account_hub
       NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
     ports:
-      - "3100:3000"
+      - "${ACCOUNT_HUB_BIND_ADDRESS:-127.0.0.1}:3100:3000"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
