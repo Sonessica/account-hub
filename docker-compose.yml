@@ -13,6 +13,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      HOSTNAME: 0.0.0.0
       DATABASE_URL: postgresql://account_hub:${POSTGRES_PASSWORD}@postgres:5432/account_hub
       NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
