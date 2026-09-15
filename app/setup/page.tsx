@@ -1,0 +1,4 @@
+import {redirect} from "next/navigation";
+import {db} from "@/lib/db";
+import {setup} from "@/app/actions";
+export default async function Setup({searchParams}:{searchParams:Promise<{error?:string}>}){if(await db.user.count())redirect("/login");const{error}=await searchParams;return <main className="auth-page"><div className="auth-card"><div className="brand-mark large">A</div><p className="eyebrow">首次启动</p><h1>创建管理员</h1><p>这是唯一能够访问 Account Hub 的本地账户。</p>{error&&<div className="alert">{error}</div>}<form action={setup}><label>用户名<input name="username" minLength={3} maxLength={40} required autoFocus/></label><label>密码<input name="password" type="password" minLength={12} maxLength={200} required/><small>至少 12 个字符</small></label><button className="button primary wide">创建并进入</button></form></div></main>}

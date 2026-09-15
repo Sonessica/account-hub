@@ -1,0 +1,14 @@
+CREATE TABLE "User" ("id" TEXT PRIMARY KEY, "username" TEXT NOT NULL UNIQUE, "passwordHash" TEXT NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Session" ("id" TEXT PRIMARY KEY, "tokenHash" TEXT NOT NULL UNIQUE, "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE, "expiresAt" TIMESTAMP(3) NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "Platform" ("id" TEXT PRIMARY KEY, "key" TEXT NOT NULL UNIQUE, "name" TEXT NOT NULL, "category" TEXT NOT NULL, "color" TEXT NOT NULL, "defaultLoginUrl" TEXT, "defaultManageUrl" TEXT, "defaultProfileUrlTemplate" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Account" ("id" TEXT PRIMARY KEY, "platformId" TEXT NOT NULL REFERENCES "Platform"("id"), "displayName" TEXT NOT NULL, "username" TEXT, "platformUserId" TEXT, "avatarUrl" TEXT, "bio" TEXT, "email" TEXT, "phone" TEXT, "profileUrl" TEXT, "loginUrl" TEXT, "managementUrl" TEXT, "vaultItemHint" TEXT, "notes" TEXT, "favorite" BOOLEAN NOT NULL DEFAULT false, "sortOrder" INTEGER NOT NULL DEFAULT 0, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL);
+CREATE TABLE "Tag" ("id" TEXT PRIMARY KEY, "name" TEXT NOT NULL UNIQUE, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE "AccountTag" ("accountId" TEXT NOT NULL REFERENCES "Account"("id") ON DELETE CASCADE, "tagId" TEXT NOT NULL REFERENCES "Tag"("id") ON DELETE CASCADE, PRIMARY KEY ("accountId", "tagId"));
+CREATE TABLE "AuditLog" ("id" TEXT PRIMARY KEY, "action" TEXT NOT NULL, "accountId" TEXT REFERENCES "Account"("id") ON DELETE SET NULL, "detail" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX "Session_userId_idx" ON "Session"("userId");
+CREATE INDEX "Session_expiresAt_idx" ON "Session"("expiresAt");
+CREATE INDEX "Account_platformId_idx" ON "Account"("platformId");
+CREATE INDEX "Account_favorite_sortOrder_idx" ON "Account"("favorite", "sortOrder");
+CREATE INDEX "AccountTag_tagId_idx" ON "AccountTag"("tagId");
+CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
+CREATE INDEX "AuditLog_accountId_idx" ON "AuditLog"("accountId");
