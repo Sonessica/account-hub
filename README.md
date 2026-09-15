@@ -36,6 +36,8 @@ Account Hub V1.0.0 是一个单用户、自托管的手工账号中心，用于�
 
 生产环境应通过 QNAP 反向代理提供 HTTPS，并使用 `COOKIE_SECURE=true`；不要将 PostgreSQL 端口映射到宿主机。
 
+在使用现有 `nas-frontend` 网络的 QNAP 上，可将 Nginx Proxy Manager 转发到 `account-hub:3000`。仓库默认 Compose 已声明该外部网络。
+
 ## 本地开发
 
 ```sh

@@ -1,5 +1,6 @@
 services:
   account-hub:
+    container_name: account-hub
     build: .
     restart: unless-stopped
     depends_on:
@@ -11,6 +12,9 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
     ports:
       - "${ACCOUNT_HUB_BIND_ADDRESS:-127.0.0.1}:3100:3000"
+    networks:
+      - default
+      - nas-frontend
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
@@ -30,3 +34,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+networks:
+  nas-frontend:
+    external: true
