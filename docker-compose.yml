@@ -7,6 +7,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://account_hub:${POSTGRES_PASSWORD}@postgres:5432/account_hub
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}
     ports:
       - "3100:3000"
     healthcheck:
