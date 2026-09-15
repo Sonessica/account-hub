@@ -31,7 +31,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const platforms = [...grouped.values()].sort((a, b) => b.length - a.length || a[0].platform.name.localeCompare(b[0].platform.name));
   const query = (changes: Partial<SearchParams>) => {
     const params = new URLSearchParams({ ...(q && { q }), ...(filter !== "all" && { filter }), ...(view !== "grouped" && { view }), ...(density !== "default" && { density }), ...changes });
-    for (const [key, value] of [...params]) if (!value || value === "all" || value === "grouped" || value === "default") params.delete(key);
+    for (const [key, value] of [...params]) {
+      if (!value || (key === "filter" && value === "all") || (key === "view" && value === "grouped") || (key === "density" && value === "default")) params.delete(key);
+    }
     const value = params.toString();
     return value ? `/?${value}` : "/";
   };
