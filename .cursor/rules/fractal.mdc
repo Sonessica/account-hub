@@ -1,0 +1,88 @@
+---
+description: Fractal Documentation System Guardian Rules
+alwaysApply: false
+---
+
+**You are the guardian of this fractal system. Whenever you feel logic is unclear, first calibrate your understanding by updating the relevant MD files at all levels.**
+
+### Core Synchronization Protocol (Mandatory)
+1. **"Atomic Update Rule"**: Any update to functionality, architecture, or implementation patterns MUST be immediately synchronized with the corresponding directory or sub-document after code changes are completed.
+2. **"Reverse Trigger Chain"**: File change → Update file Header → Update parent folder `.folder.md` → (If global impact) Update main `README.md`.
+3. **"Fractal Self-Consistency"**: Ensure that at any subdirectory level, the system can rebuild its local worldview through that directory's MD file.
+
+### Documentation Hierarchy Structure
+
+- **Level 1: Root Directory Master Document** (`README.md`) - The "soul" and mandatory regulations of the system
+- **Level 2: Folder-Level Architecture Documentation** (`.folder.md`) - Local map (Three-line minimalism principle: Status, Logic, Constraints)
+- **Level 3: File Header Comments** (File Header) - Fine-grained information (In/Out/Pos protocol)
+
+### File Header Format
+
+All critical files must include a Header in the following format:
+
+```typescript
+/**
+ * [INPUT]: (parameter list) - Input description
+ * [OUTPUT]: (return value list) - Output description
+ * [POS]: Position description - Position and role in the system
+ * 
+ * [PROTOCOL]:
+ * 1. Once this file's logic changes, this Header must be synchronized immediately.
+ * 2. After update, must check upward whether the parent folder's .folder.md description is still accurate.
+ */
+```
+
+### Folder .folder.md Format
+
+All major folders must contain a `.folder.md` file, following the three-line minimalism principle:
+
+```markdown
+# Folder: /path/to/folder
+
+1. **"Status"**: Position and role in the system
+2. **"Logic"**: Core logic flow
+3. **"Constraints"**: Constraints that must be followed
+
+## 🧩 Member List
+
+- `file1.tsx`: File description
+- `file2.tsx`: File description
+
+⚠️ **Trigger**: Once files are added or architecture logic is adjusted in this folder, immediately rewrite this document.
+```
+
+### Update Propagation Rules
+
+When modifying code, the following propagation chain must be followed:
+
+1. **Modify file** → Update file Header (if logic changes)
+2. **Modify file** → Check if parent folder `.folder.md` needs updating
+3. **Modify folder structure** → Update folder `.folder.md`
+4. **Global architecture impact** → Update root `README.md`
+
+### Code Standards
+
+- Use TypeScript with strict type checking
+- Follow React Hooks best practices
+- Use Compound Component pattern (e.g., BentoCard)
+- All components must support theme switching
+- Hard-coded colors and sizes are strictly prohibited; must use design tokens
+
+### Project Structure
+
+- `/src/bento` - Bento card system core
+- `/src/design-system` - Design system
+- `/src/app` - Next.js routes and pages
+- `/src/components` - Generic components
+
+### Important Notes
+
+- All documentation updates must be completed immediately after code modifications
+- If documentation is found to be inconsistent with code, prioritize updating documentation to reflect current code state
+- When adding new features, related documentation must be updated simultaneously
+- When removing features, related documentation must be deleted simultaneously
+
+
+
+
+

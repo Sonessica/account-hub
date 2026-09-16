@@ -1,86 +1,138 @@
-# Account Hub
+<div align="center">
 
-Account Hub V1.0.0 是一个单用户、自托管的手工账号中心，用于整理个人在不同平台上的数字身份、主页和登录入口。
+# 🍱 OpenBento
 
-## 安全边界
+**The Open-Source Alternative to Bento.me - Free, Self-Hosted GitHub Project**
 
-- 不保存平台密码、TOTP、Passkey 或 Cookie。
-- 不调用 Vaultwarden API；`vaultItemHint` 只是便于查找的纯文本提示。
-- V1 不连接平台 API，也不会声称账号状态已被远程验证。
-- 邮箱和手机号在普通界面默认遮罩。
+[![Next.js](https://img.shields.io/badge/Next.js-16.1-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-## 功能
+[**Explore Showcase**](https://github.com) • [**Documentation**](./docs) • [**View in 中文**](./README.zh.md)
 
-- Google、Microsoft、Apple、X、小红书、知乎、QQ、Bilibili 和通用平台
-- 同平台多账号、标签、收藏、搜索和分类
-- 主页、登录及管理入口
-- 本地管理员登录，密码使用 Argon2id
-- JSON 数据导出、审计记录、浅色/深色自适应
-- PostgreSQL 持久化与 Docker Compose 部署
+</div>
 
-## QNAP / Docker Compose 部署
+---
 
-1. 复制环境文件并生成长随机数据库密码：
+## � Documentation Mandate
 
-   ```sh
-   cp .env.example .env
-   ```
+> **⚠️ CRITICAL: Any change to functionality, architecture, or implementation patterns MUST be followed by updating the relevant `ARCHITECTURE.md` in affected directories.**
 
-2. 启动：
+This project uses a **fractal, self-referential documentation system** inspired by *Gödel, Escher, Bach*:
 
-   ```sh
-   docker compose up -d --build
-   ```
+- **Every folder** contains an `ARCHITECTURE.md` describing its contents
+- **Every file** contains header comments declaring `@input` / `@output` / `@pos`
+- **Changes propagate upward**: file → folder → module → root
 
-3. 默认只监听 `127.0.0.1:3100`，用于反向代理。若需先在局域网测试，把 `.env` 中的 `ACCOUNT_HUB_BIND_ADDRESS` 改为 NAS 的局域网 IP，并临时设置 `COOKIE_SECURE=false`，然后打开 `http://NAS-IP:3100`。首次访问会要求创建管理员。
+*Local affects global, global affects local.*
 
-生产环境应通过 QNAP 反向代理提供 HTTPS，并使用 `COOKIE_SECURE=true`；不要将 PostgreSQL 端口映射到宿主机。
+> 📖 **Detailed Documentation**: See [FRACTAL_DOCS.md](./FRACTAL_DOCS.md) for the complete fractal documentation system specification.
 
-在使用现有 `nas-frontend` 网络的 QNAP 上，可将 Nginx Proxy Manager 转发到 `account-hub:3000`。仓库默认 Compose 已声明该外部网络。
+---
 
-## 本地开发
+## �📖 The Story
 
-```sh
-pnpm install
-pnpm prisma generate
-pnpm dev
+> **"Preserving the aesthetic that Linktree sunsetted."**
+
+**OpenBento** is the **best open-source alternative to bento.me** on GitHub. Born as a community response to the acquisition and sunset of **bento.me**, this project provides a **free, self-hosted replacement** that can never be shut down.
+
+We believe the Bento design philosophy—modular, elegant, and personal—belongs to the open-source community. This project is a faithful recreation of that experience, built with modern web technologies (Next.js, React, TypeScript) for developers who want to own their corner of the internet.
+
+**Looking for a bento.me alternative?** You've found it. This GitHub repository offers a complete, production-ready solution that preserves the beloved Bento aesthetic while giving you full control over your data and hosting.
+
+---
+
+## ✨ Design Philosophy
+
+<table width="100%">
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🌸 Modularity</h3>
+      <p>Each card is a self-contained universe. Like a traditional bento box, components are independent yet perfectly cohesive when combined.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>🎯 Simplicity</h3>
+      <p>High information density without the noise. We follow the <b>"Less is More"</b> principle, ensuring every pixel serves a purpose.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🔄 Flexibility</h3>
+      <p>From 1x1 to 2x2, our grid adapts to your content. Fully drag-and-drop enabled for ultimate creative freedom.</p>
+    </td>
+    <td width="50%" valign="top">
+      <h3>🎭 Elegance</h3>
+      <p>Signature 27px rounded corners, double-border highlights, and Inter-driven typography for that premium feel.</p>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 🚀 Quick Start
+
+Get your Bento page up and running in seconds:
+
+```bash
+npm install && npm run dev
 ```
 
-需要在 `.env` 中提供可用的 PostgreSQL `DATABASE_URL`，然后执行：
+---
 
-```sh
-pnpm prisma migrate deploy
-pnpm db:seed
-```
+## 🏗️ Core Architecture
 
-## 验证
+- **BentoCard** — The atomic unit of your layout. Supports 1x1, 1x2, 2x1, and 2x2 dimensions with a clean Compound Component pattern.
+- **BentoGrid** — A robust CSS Grid implementation that handles complex layouts and responsive breakpoints automatically.
+- **Drag & Drop** — Built-in interactive layout engine for effortless personalization.
 
-```sh
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-```
+---
 
-## 备份与恢复
+## 🛠️ Tech Stack
 
-需要备份两个对象：`.env` 与 PostgreSQL 数据。推荐使用逻辑备份：
+<div align="center">
 
-```sh
-docker compose exec -T postgres pg_dump -U account_hub account_hub > account-hub.sql
-```
+| Framework | UI Logic | Styling | Animation |
+| :---: | :---: | :---: | :---: |
+| **Next.js 16** | **React 19** | **Tailwind 4** | **Framer Motion** |
 
-恢复到空数据库：
+</div>
 
-```sh
-docker compose exec -T postgres psql -U account_hub account_hub < account-hub.sql
-```
+---
 
-升级前先备份，然后执行：
+## 🌟 Why OpenBento? The Best Bento.me Alternative on GitHub
 
-```sh
-git pull
-docker compose up -d --build
-```
+- ✅ **Open-Source Alternative to Bento.me** — Free, self-hosted replacement that preserves the Bento.me experience
+- ✅ **GitHub-First Project** — Fully open-source, community-driven development on GitHub
+- ✅ **Self-Hosted** — You own your data. No Linktree account required. Deploy anywhere (Vercel, Netlify, your own server)
+- ✅ **SEO Optimized** — Semantic HTML and fast loading for better search engine ranking
+- ✅ **Legacy Preservation** — A replacement for bento.me that can't be sunsetted. Never lose your Bento page again
+- ✅ **Premium Aesthetic** — Precise recreation of the beloved modular UI with 27px rounded corners and elegant typography
+- ✅ **Modern Tech Stack** — Built with Next.js 16, React 19, TypeScript, and Tailwind CSS 4
+- ✅ **Fully Customizable** — Drag-and-drop editor, custom widgets, and complete design control
 
-容器启动时会自动执行数据库迁移与平台种子更新。
+---
+
+## 🔍 Keywords & Search Terms
+
+**OpenBento** is discoverable as:
+- **bento me alternative** / **bento.me alternative**
+- **bento me alternative github** / **bento.me alternative github**
+- **open source bento me** / **open source bento.me**
+- **bento me replacement** / **bento.me replacement**
+- **self-hosted bento page** / **self-hosted bento.me**
+- **bento linktree alternative** / **bento link in bio alternative**
+- **github bento page** / **github bento.me clone**
+- **free bento page builder** / **free bento.me alternative**
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the Bento community**
+
+[GitHub](https://github.com) • [Showcase](./src/app/showcase) • [Twitter](https://twitter.com)
+
+**⭐ Star this repo if you're looking for a bento.me alternative!**
+
+</div>
