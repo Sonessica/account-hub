@@ -250,7 +250,7 @@ export default function BentoShowcasePage() {
                                 title={`Join Biuty🌸\nCommunity`}
                                 subtitle="chat.whatsapp.com"
                             />
-                            {/* 2x1 卡片特有的右侧媒体 */}
+                            {/* 2x1 卡片特有的右侧媒体（无外链资源，纯色占位） */}
                             <div style={{
                                 position: 'absolute',
                                 top: 24,
@@ -260,19 +260,14 @@ export default function BentoShowcasePage() {
                                 borderRadius: 16,
                                 overflow: 'hidden',
                                 pointerEvents: 'none',
-                            }}>
-                                <img
-                                    src="http://localhost:3845/assets/fbb01462716d8c3c050e75f55746393567eb2e55.png"
-                                    alt="WhatsApp hand"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                            </div>
+                                background: 'linear-gradient(135deg, #d1fae5 0%, #6ee7b7 45%, #25d366 100%)',
+                            }} aria-hidden="true" />
                         </BentoCard>
 
                         {/* 5. 地图卡片 2x2 - 精确复刻 Figma 25:1345 */}
                         <BentoCard
                             size="2x2"
-                            backgroundImage="http://localhost:3845/assets/08a1f114b3b221fab78b6cc18d90533f69de7a1d.png"
+                            backgroundColor="#dce8ff"
                             clickable
                         >
                             {/* 中央定位点 */}
@@ -365,9 +360,7 @@ export default function BentoShowcasePage() {
                         <BentoCard size="1x1" backgroundColor="#ffffff" clickable>
                             <PlatformCardContent
                                 icon={
-                                    <div style={{ backgroundColor: '#FFD700', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <img src="http://localhost:3845/assets/08a1f114b3b221fab78b6cc18d90533f69de7a1d.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avatar" />
-                                    </div>
+                                    <div style={{ backgroundColor: '#FFD700', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>Z</div>
                                 }
                                 title={`Zihan | Branding,\nDesigning &\nBeyond`}
                                 subtitle="bravohenry.com"

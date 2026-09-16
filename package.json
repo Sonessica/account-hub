@@ -1,7 +1,7 @@
 {
-  "name": "openbento",
+  "name": "account-hub",
   "version": "0.1.0",
-  "description": "Open-source alternative to bento.me - Free, self-hosted GitHub project for creating beautiful Bento-style link pages. A complete replacement for bento.me with drag-and-drop editor, custom widgets, and modern tech stack.",
+  "description": "Self-hosted single-user Account Hub / Bento editor with NAS SQLite persistence, based on OpenBento.",
   "keywords": [
     "bento",
     "bento-me",
@@ -25,10 +25,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/openbento"
+    "url": "https://github.com/Sonessica/account-hub"
   },
-  "author": "OpenBento Community",
+  "author": "Account Hub",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "private": true,
   "scripts": {
     "dev": "next dev",

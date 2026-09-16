@@ -1,5 +1,7 @@
 # 环境变量配置指南
 
+> **LEGACY**：本文针对旧版 Supabase 多用户路径。当前单用户 NAS 编辑器请以根目录 [`.env.example`](./.env.example) 与 [README.md](./README.md) 为准，主要变量为 `ACCOUNT_HUB_ADMIN_PASSWORD` / `ACCOUNT_HUB_SESSION_SECRET` / `NEXT_PUBLIC_APP_URL`。
+
 ## 📋 快速开始
 
 ### 1. 创建 `.env.local` 文件

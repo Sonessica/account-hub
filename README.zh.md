@@ -1,100 +1,67 @@
-<div align="center">
+# Account Hub
 
-# 🍱 OpenBento
+自托管的单用户 Bento 编辑器 / 个人账号中心，面向 NAS 或私有网络。基于 OpenBento，持久化改为本地 SQLite。
 
-**Bento 设计风格的开源传承者**
+## 这是什么
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.1-black?logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+- 主入口：`/bento/editor`
+- 数据落在本地 SQLite（`node:sqlite`），不依赖 Supabase
+- 管理密码门禁 + revision 乐观锁自动保存
+- 首次可选导入旧浏览器 localStorage 卡片
 
-[**在线预览**](https://github.com) • [**组件文档**](./docs) • [**English Version**](./README.md)
+## 环境要求
 
-</div>
+- **Node.js 22+**（依赖内置 `node:sqlite`，更低版本无法启动）
+- 推荐 Docker + Docker Compose 部署
 
----
-
-## 📖 故事背景
-
-> **“在 bento.me 消失后，我们决定为社区留下这抹美学。”**
-
-OpenBento 的诞生是为了回应 **bento.me** 被 Linktree 收购并停运。我们相信，那种模块化、优雅且极具个性化的 Bento 设计哲学不应消失，而应属于开源社区。
-
-这是一个忠于原味的复刻项目，采用最新的前端技术栈，专为想要拥有独立、美观页面的开发者打造。
-
----
-
-## ✨ 设计哲学 (Bento Philosophy)
-
-<table width="100%">
-  <tr>
-    <td width="50%" valign="top">
-      <h3>🌸 模块化 (Modularity)</h3>
-      <p>每个卡片都是一个独立的宇宙。像传统的日式便当盒一样，组件之间相互独立，组合时却能呈现极致的和谐。</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>🎯 极简主义 (Simplicity)</h3>
-      <p>高信息密度，却不拥挤。我们遵循 <b>“少即是多”</b> 的原则，确保每一个像素都在传递有价值的信息。</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>🔄 灵活性 (Flexibility)</h3>
-      <p>从 1x1 到 2x2，网格随内容而动。内置完整的拖拽排序功能，给予你极致的创作自由。</p>
-    </td>
-    <td width="50%" valign="top">
-      <h3>🎭 优雅感 (Elegance)</h3>
-      <p>标志性的 27px 圆角、细腻的双层边框高光、以及精心调校的间距，只为营造高级的视觉触感。</p>
-    </td>
-  </tr>
-</table>
-
----
-
-## 🚀 快速开始
-
-只需一行命令，即可开启您的 Bento 之旅：
+## 快速开始（Docker）
 
 ```bash
-npm install && npm run dev
+cd /path/to/account-hub   # 例如 /share/Container/account-hub
+
+# 在 docker-compose.yml 旁创建不入库的 .env
+cat > .env <<'EOF'
+ACCOUNT_HUB_ADMIN_PASSWORD=change-me
+ACCOUNT_HUB_SESSION_SECRET=change-me-to-a-long-random-string-at-least-32-chars
+EOF
+
+docker compose up -d --build
 ```
 
----
+浏览器访问你配置的域名（compose 默认 `NEXT_PUBLIC_APP_URL=https://account.atchooo.com:2096`）。
 
-## 🏗️ 核心架构
+> **访问地址必须与 `NEXT_PUBLIC_APP_URL` 完全一致**（协议 + 域名 + 端口），否则登录会因 Origin 校验返回 403。
 
-- **BentoCard** — 布局的原子单位。采用清晰的 Compound Component 模式，支持 1x1, 1x2, 2x1, 2x2 多种规格。
-- **BentoGrid** — 强大的 CSS Grid 实现，自动处理复杂的响应式断点和卡片重排。
-- **拖拽引擎** — 内置交互式布局引擎，让个性化定制变得轻而易举。
+## 环境变量
 
----
+见 [`.env.example`](./.env.example)。`ACCOUNT_HUB_ADMIN_PASSWORD` 与 `ACCOUNT_HUB_SESSION_SECRET` 为必填。不要提交 `.env` 或 `data/`。
 
-## 🛠️ 技术栈
+## 本地开发
 
-<div align="center">
+```bash
+npm install
+ACCOUNT_HUB_ADMIN_PASSWORD=dev-password \
+ACCOUNT_HUB_SESSION_SECRET=dev-session-secret-at-least-32-characters-long \
+ACCOUNT_HUB_DB_PATH=./data/account-hub.sqlite \
+NEXT_PUBLIC_APP_URL=http://localhost:3000 \
+npm run dev
+```
 
-| 框架 | UI 逻辑 | 样式方案 | 动画引擎 |
-| :---: | :---: | :---: | :---: |
-| **Next.js 16** | **React 19** | **Tailwind 4** | **Framer Motion** |
+`/` 与 `/editor` 会跳转到 `/bento/editor`。
 
-</div>
+## 数据与备份
 
----
+- 宿主机路径 `./data/account-hub.sqlite`，挂载到容器 `/app/data`
+- 备份时包含可能存在的 `-wal` / `-shm`
+- 优先停容器或使用 SQLite online backup 再拷贝
+- 备份请放在 `data/` 目录之外
 
-## 🌟 SEO & 特性
+详见 [docs/NAS_SQLITE_PERSISTENCE.md](./docs/NAS_SQLITE_PERSISTENCE.md)。
 
-- ✅ **bento.me 完美替代** — 开源、免费、永不关停。
-- ✅ **自托管 (Self-Hosted)** — 数据完全掌握在自己手中，无需依赖第三方平台。
-- ✅ **SEO 友好** — 语义化 HTML 与极致的加载速度，助力搜索引擎排名。
-- ✅ **纯粹美学** — 精确复刻备受喜爱的模块化 UI 视觉。
+## 遗留说明
 
----
+Supabase 相关 API / 多用户 store 仍在代码中，**当前单用户编辑器不会使用**。历史设计对比文档在 `docs/archive/`。
 
-<div align="center">
+## License
 
-**用 ❤️ 为 Bento 社区制作**
-
-[GitHub](https://github.com) • [示例展示](./src/app/showcase) • [Twitter](https://twitter.com)
-
-</div>
+MIT（上游声明 MIT；若对外分发请自行补充 `LICENSE` 文件）。

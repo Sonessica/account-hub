@@ -1,5 +1,7 @@
 # Supabase 后端集成完成报告
 
+> **LEGACY / UNUSED**：当前部署的 `/bento/editor` 使用 NAS SQLite（见 [docs/NAS_SQLITE_PERSISTENCE.md](./docs/NAS_SQLITE_PERSISTENCE.md)），不会走下列 Supabase API。本文仅作历史记录，后续产品加固阶段应删除或整合相关路由。
+
 ## ✅ 已完成的工作
 
 ### 1. 数据库 Schema 创建
