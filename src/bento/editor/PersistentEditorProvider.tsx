@@ -151,7 +151,10 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
     })
-    if (!response.ok) { setMessage('密码错误或登录失败'); return }
+    if (!response.ok) {
+      setMessage(response.status === 429 ? '尝试次数过多，请约 15 分钟后再试。' : '密码错误或登录失败')
+      return
+    }
     setPassword('')
     await load()
   }

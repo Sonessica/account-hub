@@ -1,8 +1,10 @@
 # NAS SQLite persistence
 
 The deployed `/bento/editor` is a single-user editor. It requires
-`ACCOUNT_HUB_ADMIN_PASSWORD` (at least 16 characters) in an untracked `.env` next
-to `docker-compose.yml`. The database lives at `./data/account-hub.sqlite` on
+`ACCOUNT_HUB_ADMIN_PASSWORD` (at least 6 characters) and an independent,
+random `ACCOUNT_HUB_SESSION_SECRET` (at least 32 characters) in an untracked
+`.env` next to `docker-compose.yml`. Login attempts are rate-limited per client
+IP. The database lives at `./data/account-hub.sqlite` on
 the NAS and is bind-mounted into `/app/data`. Never commit `.env` or `data/`.
 The storage layer uses Node 22's built-in `node:sqlite` module; no native npm
 SQLite package is needed. Node currently marks this module experimental.

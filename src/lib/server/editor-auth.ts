@@ -6,18 +6,24 @@ import { cookies } from 'next/headers'
 const COOKIE = 'account_hub_session'
 const MAX_AGE = 60 * 60 * 24 * 30
 
-function secret() {
+function adminPassword() {
   const value = process.env.ACCOUNT_HUB_ADMIN_PASSWORD
-  if (!value || value.length < 16) throw new Error('ACCOUNT_HUB_ADMIN_PASSWORD must have at least 16 characters')
+  if (!value || value.length < 6) throw new Error('ACCOUNT_HUB_ADMIN_PASSWORD must have at least 6 characters')
+  return value
+}
+
+function sessionSecret() {
+  const value = process.env.ACCOUNT_HUB_SESSION_SECRET
+  if (!value || value.length < 32) throw new Error('ACCOUNT_HUB_SESSION_SECRET must have at least 32 characters')
   return value
 }
 
 function signature(expires: number) {
-  return createHmac('sha256', secret()).update(`account-hub:${expires}`).digest('hex')
+  return createHmac('sha256', sessionSecret()).update(`account-hub:${expires}`).digest('hex')
 }
 
 export function checkPassword(candidate: string) {
-  const expected = Buffer.from(secret())
+  const expected = Buffer.from(adminPassword())
   const actual = Buffer.from(candidate)
   return expected.length === actual.length && timingSafeEqual(expected, actual)
 }
