@@ -37,7 +37,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate:images": "node scripts/migrate-embedded-images.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -55,6 +56,7 @@
     "phosphor-react": "^1.4.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "sharp": "^0.34.5",
     "uuid": "^13.0.0",
     "zustand": "^5.0.9"
   },

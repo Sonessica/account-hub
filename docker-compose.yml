@@ -8,6 +8,7 @@ services:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: review-placeholder
       NEXT_PUBLIC_APP_URL: https://account.atchooo.com:2096
       ACCOUNT_HUB_DB_PATH: /app/data/account-hub.sqlite
+      ACCOUNT_HUB_MEDIA_PATH: /app/data/media
       ACCOUNT_HUB_ADMIN_PASSWORD: ${ACCOUNT_HUB_ADMIN_PASSWORD:?Set ACCOUNT_HUB_ADMIN_PASSWORD in .env}
       ACCOUNT_HUB_SESSION_SECRET: ${ACCOUNT_HUB_SESSION_SECRET:?Set ACCOUNT_HUB_SESSION_SECRET in .env}
     volumes:

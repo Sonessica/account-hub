@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+
 import type {
     ImageWidgetConfig,
     LinkWidgetConfig,
@@ -8,6 +10,7 @@ import type {
     TextWidgetConfig,
     WidgetConfig,
 } from '../widgets/types'
+import { uploadImage } from '@/lib/client/upload-image'
 
 interface WidgetEditorPanelProps {
     widget: WidgetConfig
@@ -83,7 +86,28 @@ function LinkFields({ widget, onUpdate }: { widget: LinkWidgetConfig; onUpdate: 
 }
 
 function ImageFields({ widget, onUpdate }: { widget: ImageWidgetConfig; onUpdate: WidgetEditorPanelProps['onUpdate'] }) {
+    const [status, setStatus] = useState<string | null>(null)
+
+    const replaceImage = async (file?: File) => {
+        if (!file) return
+        setStatus('正在压缩并上传…')
+        try {
+            onUpdate({ src: await uploadImage(file) })
+            setStatus('图片已替换')
+        } catch (error) {
+            setStatus(error instanceof Error ? error.message : '图片上传失败')
+        }
+    }
+
     return <>
+        <label className={labelClass}>替换图片
+            <span className="cursor-pointer rounded-xl bg-black px-3 py-2.5 text-center text-sm font-medium text-white hover:bg-black/80">
+                选择图片
+                <input className="hidden" type="file" accept="image/*"
+                    onChange={event => { void replaceImage(event.target.files?.[0]); event.target.value = '' }} />
+            </span>
+            {status && <span className="text-xs font-normal text-black/50">{status}</span>}
+        </label>
         <label className={labelClass}>图片地址
             <input className={fieldClass} type="url" value={widget.src} onChange={event => onUpdate({ src: event.target.value })} />
         </label>

@@ -10,7 +10,7 @@
  * 2. After update, must check upward whether the parent folder's .folder.md description is still accurate.
  */
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { 
     LinkSimple, 
     Image, 
@@ -31,6 +31,7 @@ import {
 import { cn } from '@/design-system/utils/cn'
 import { useClickOutside } from './hooks/useClickOutside'
 import { useDeviceDetection } from './hooks/useDeviceDetection'
+import { uploadImage } from '@/lib/client/upload-image'
 
 // ============ Icons (Phosphor Icons - Duotone Style with Dopamine Colors) ============
 
@@ -135,6 +136,7 @@ export const EditorToolbar: React.FC = () => {
     const isMobileDevice = useDeviceDetection()
     const [showLinkModal, setShowLinkModal] = useState(false)
     const [linkUrl, setLinkUrl] = useState('')
+    const [imageUploadStatus, setImageUploadStatus] = useState<string | null>(null)
     const linkInputRef = useRef<HTMLInputElement>(null)
     const linkModalRef = useRef<HTMLFormElement>(null)
 
@@ -278,18 +280,21 @@ export const EditorToolbar: React.FC = () => {
         fileInputRef.current?.click()
     }
 
+    const addUploadedImage = useCallback(async (file: File) => {
+        setImageUploadStatus('正在压缩并上传图片…')
+        try {
+            const url = await uploadImage(file)
+            addWidget(createImageWidgetConfig(url, '1x1'))
+            setImageUploadStatus(null)
+        } catch (error) {
+            setImageUploadStatus(error instanceof Error ? error.message : '图片上传失败')
+        }
+    }, [addWidget])
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file && file.type.startsWith('image/')) {
-            // Convert file to data URL
-            const reader = new FileReader()
-            reader.onload = (event) => {
-                const dataUrl = event.target?.result as string
-                if (dataUrl) {
-                    addWidget(createImageWidgetConfig(dataUrl, '1x1'))
-                }
-            }
-            reader.readAsDataURL(file)
+            void addUploadedImage(file)
         }
         // Reset input so same file can be selected again
         if (fileInputRef.current) {
@@ -309,14 +314,7 @@ export const EditorToolbar: React.FC = () => {
                     e.preventDefault()
                     const file = item.getAsFile()
                     if (file) {
-                        const reader = new FileReader()
-                        reader.onload = (event) => {
-                            const dataUrl = event.target?.result as string
-                            if (dataUrl) {
-                                addWidget(createImageWidgetConfig(dataUrl, '1x1'))
-                            }
-                        }
-                        reader.readAsDataURL(file)
+                        void addUploadedImage(file)
                     }
                     break
                 }
@@ -327,7 +325,7 @@ export const EditorToolbar: React.FC = () => {
         return () => {
             document.removeEventListener('paste', handlePaste)
         }
-    }, [addWidget])
+    }, [addUploadedImage])
 
     const handleAddText = () => {
         addWidget(createTextWidgetConfig('', 'note', '1x1'))
@@ -352,6 +350,11 @@ export const EditorToolbar: React.FC = () => {
                 className="hidden"
                 aria-label="Upload image"
             />
+            {imageUploadStatus && (
+                <div className="fixed bottom-[104px] left-1/2 z-[2001] -translate-x-1/2 rounded-xl bg-black px-4 py-2 text-sm text-white shadow-xl">
+                    {imageUploadStatus}
+                </div>
+            )}
 
             {/* Link Input Modal - Positioned above toolbar */}
             {showLinkModal && (
