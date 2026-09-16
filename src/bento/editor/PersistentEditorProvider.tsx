@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorProvider, useEditor, type ProfileData } from './EditorContext'
 import type { WidgetConfig } from '../widgets/types'
+import savingLoader from './SavingLoader.module.css'
 
 type Snapshot = {
   desktopWidgets: WidgetConfig[]
@@ -63,6 +64,7 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
       while (JSON.stringify(latest.current) !== savedHash.current) {
         const snapshot = latest.current
         const hash = JSON.stringify(snapshot)
+        const startedAt = Date.now()
         setStatus('saving')
         const response = await fetch('/api/private/editor', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -77,6 +79,8 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
         const result = await response.json() as { snapshot: Stored }
         revision.current = result.snapshot.revision
         savedHash.current = hash
+        const remaining = 700 - (Date.now() - startedAt)
+        if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining))
       }
       setStatus('saved')
     } catch (error) {
@@ -104,9 +108,11 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
     return () => clearTimeout(timer)
   }, [desktopWidgets, mobileWidgets, layoutIndependent, profile, initial, save])
 
-  return <div role="status" className="fixed top-4 right-4 z-[100] rounded-xl bg-white/95 px-4 py-2 text-sm text-black shadow-lg">
-    {status === 'saved' && '已保存到 NAS'}
-    {status === 'saving' && '正在保存…'}
+  if (status === 'saved') return null
+  if (status === 'saving') return <div role="status" aria-label="正在保存到 NAS" className="fixed top-3 right-4 z-[100] rounded-xl bg-white/95 px-3 pb-3 pt-1 shadow-lg">
+    <div className={savingLoader.loader} aria-hidden="true" />
+  </div>
+  return <div role="alert" className="fixed top-4 right-4 z-[100] rounded-xl bg-white/95 px-4 py-2 text-sm text-black shadow-lg">
     {status === 'error' && <><span>保存失败，修改仍在此浏览器。</span><button className="ml-3 underline" onClick={() => void save()}>重试</button></>}
     {status === 'conflict' && <><span>其他浏览器已更新，请先刷新页面。</span><button className="ml-3 underline" onClick={() => location.reload()}>刷新</button></>}
   </div>
