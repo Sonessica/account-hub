@@ -1,7 +1,7 @@
 /**
- * [INPUT]: (WidgetConfig[], ProfileData, localStorage) - Widget configuration array, profile data, and local storage interface
+ * [INPUT]: (WidgetConfig[], ProfileData, optional external snapshot) - Widget configuration array, profile data, and persistence mode
  * [OUTPUT]: (EditorProvider, useEditor) - Editor context provider and hook with widget and profile management
- * [POS]: Located at /bento/editor state management layer, manages edit mode, selected Widget, Widgets CRUD operations, and Profile data persistence.
+ * [POS]: Located at /bento/editor state management layer; manages editor state with legacy browser storage or an externally persisted snapshot.
  * 
  * [PROTOCOL]:
  * 1. Once this file's logic changes, this Header must be synchronized immediately.
@@ -112,18 +112,28 @@ const extractContentProperties = (widget: WidgetConfig): Omit<WidgetConfig, 'siz
     return rest as Omit<WidgetConfig, 'size'> & { size?: WidgetSize }
 }
 
-export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const EditorProvider: React.FC<{
+    children: ReactNode
+    persistence?: 'legacy' | 'external'
+    initialSnapshot?: {
+        desktopWidgets: WidgetConfig[]
+        mobileWidgets: WidgetConfig[]
+        layoutIndependent: { desktop: boolean; mobile: boolean }
+        profile: ProfileData
+    }
+}> = ({ children, persistence = 'legacy', initialSnapshot }) => {
+    const isExternal = persistence === 'external'
     const { user, updateProfile: updateUserProfile } = useUserStore()
     const [isEditing, setIsEditing] = useState(true) // Default to edit mode for development convenience
     const [viewMode, setViewMode] = useState<ViewMode>('desktop')
     const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null)
-    const [desktopWidgets, setDesktopWidgets] = useState<WidgetConfig[]>([])
-    const [mobileWidgets, setMobileWidgets] = useState<WidgetConfig[]>([])
-    const [layoutIndependent, setLayoutIndependent] = useState<{ desktop: boolean; mobile: boolean }>({
+    const [desktopWidgets, setDesktopWidgets] = useState<WidgetConfig[]>(initialSnapshot?.desktopWidgets || [])
+    const [mobileWidgets, setMobileWidgets] = useState<WidgetConfig[]>(initialSnapshot?.mobileWidgets || [])
+    const [layoutIndependent, setLayoutIndependent] = useState<{ desktop: boolean; mobile: boolean }>(initialSnapshot?.layoutIndependent || {
         desktop: false,
         mobile: false,
     })
-    const [profile, setProfile] = useState<ProfileData>({
+    const [profile, setProfile] = useState<ProfileData>(initialSnapshot?.profile || {
         name: 'LinkCard',
         description: "The first context-aware identity OS. Create a dynamic Link Card that lives natively in Apple Wallet. Features AI agents, offline sync, and zero-app sharing.",
         avatarUrl: undefined,
@@ -192,6 +202,7 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // ============ Load from localStorage on mount ============
 
     useEffect(() => {
+        if (isExternal) return
         // Only load from localStorage if user is not logged in yet
         // If user is logged in, we'll load from Supabase instead
         if (!user) {
@@ -242,13 +253,14 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 }
             }
         }
-    }, [user])
+    }, [user, isExternal])
 
     // ============ Load profile and layout from Supabase when user logs in ============
 
     const hasLoadedFromSupabase = React.useRef<string | null>(null)
 
     useEffect(() => {
+        if (isExternal) return
         if (user) {
             // Use user.id as the key to track if we've loaded for this specific user
             // This ensures we reload when switching users or after refresh
@@ -374,11 +386,12 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             hasLoadedFromSupabase.current = null
             lastSavedProfileRef.current = ''
         }
-    }, [user])
+    }, [user, isExternal])
 
     // ============ Auto-save to localStorage and Supabase ============
 
     useEffect(() => {
+        if (isExternal) return
         if (desktopWidgets.length > 0 || mobileWidgets.length > 0 || localStorage.getItem(STORAGE_KEY)) {
             const data: StoredLayout = {
                 desktopWidgets,
@@ -429,13 +442,14 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 return () => clearTimeout(timer)
             }
         }
-    }, [desktopWidgets, mobileWidgets, layoutIndependent, viewMode, user])
+    }, [desktopWidgets, mobileWidgets, layoutIndependent, viewMode, user, isExternal])
 
     // Track last saved profile to avoid unnecessary saves
     const lastSavedProfileRef = React.useRef<string>('')
 
     // Auto-save profile data to localStorage and Supabase
     useEffect(() => {
+        if (isExternal) return
         // Always save to localStorage for offline access
         localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile))
         
@@ -489,7 +503,7 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             const timer = setTimeout(saveProfile, 1000)
             return () => clearTimeout(timer)
         }
-    }, [profile, user, updateUserProfile])
+    }, [profile, user, updateUserProfile, isExternal])
 
     // ============ Desktop Widget CRUD Operations ============
 
@@ -670,6 +684,7 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // ============ Persistence Helpers ============
 
     const loadLayout = useCallback((): WidgetConfig[] | null => {
+        if (isExternal) return viewMode === 'desktop' ? desktopWidgets : mobileWidgets
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored) {
             try {
@@ -692,14 +707,14 @@ export const EditorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             }
         }
         return null
-    }, [viewMode])
+    }, [viewMode, desktopWidgets, mobileWidgets, isExternal])
 
     const clearLayout = useCallback(() => {
-        localStorage.removeItem(STORAGE_KEY)
+        if (!isExternal) localStorage.removeItem(STORAGE_KEY)
         setDesktopWidgets([])
         setMobileWidgets([])
         setSelectedWidgetId(null)
-    }, [])
+    }, [isExternal])
 
     return (
         <EditorContext.Provider

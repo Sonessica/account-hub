@@ -11,7 +11,9 @@ Run `docker compose up -d --build` from `/share/Container/account-hub` to deploy
 The first authenticated browser may import its existing OpenBento localStorage
 cards if the database is empty. Once a snapshot exists, the database is the
 source of truth in every browser. Saving uses a revision number and rejects
-stale writes with HTTP 409.
+stale writes with HTTP 409. The old browser data is not deleted or duplicated
+when importing or starting blank; the editor reads its initial state directly
+from SQLite. Snapshot requests are limited to 20 MB.
 
 To back up without stopping the app, use SQLite's online backup mechanism or
 stop the app container and copy the full `data/` directory (including `-wal`

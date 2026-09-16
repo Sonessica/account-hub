@@ -3,6 +3,7 @@ import { isAuthenticated, sameOrigin } from '@/lib/server/editor-auth'
 import { readEditor, saveEditor, type EditorSnapshot } from '@/lib/server/editor-db'
 
 export const runtime = 'nodejs'
+const MAX_SNAPSHOT_BYTES = 20_000_000
 
 export async function GET() {
   if (!await isAuthenticated()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -26,9 +27,9 @@ export async function PUT(request: Request) {
   if (!await isAuthenticated()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!sameOrigin(request)) return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
   const length = Number(request.headers.get('content-length') || 0)
-  if (length > 2_000_000) return NextResponse.json({ error: 'Snapshot too large' }, { status: 413 })
+  if (length > MAX_SNAPSHOT_BYTES) return NextResponse.json({ error: 'Snapshot too large' }, { status: 413 })
   const raw = await request.text()
-  if (Buffer.byteLength(raw) > 2_000_000) return NextResponse.json({ error: 'Snapshot too large' }, { status: 413 })
+  if (Buffer.byteLength(raw) > MAX_SNAPSHOT_BYTES) return NextResponse.json({ error: 'Snapshot too large' }, { status: 413 })
   const body = (() => { try { return JSON.parse(raw) } catch { return null } })()
   if (!Number.isSafeInteger(body?.revision) || body.revision < 0 || !validSnapshot(body?.snapshot)) {
     return NextResponse.json({ error: 'Invalid snapshot' }, { status: 400 })

@@ -32,21 +32,15 @@ function localSnapshot(): Snapshot | null {
     return {
       desktopWidgets, mobileWidgets,
       layoutIndependent: layout?.layoutIndependent || { desktop: false, mobile: false },
-      profile: profile || defaultProfile,
+      profile: {
+        name: typeof profile?.name === 'string' ? profile.name : defaultProfile.name,
+        description: typeof profile?.description === 'string' ? profile.description : defaultProfile.description,
+        ...(typeof profile?.avatarUrl === 'string' ? { avatarUrl: profile.avatarUrl } : {}),
+      },
     }
   } catch {
     return null
   }
-}
-
-function primeLocal(snapshot: Snapshot) {
-  localStorage.setItem(LAYOUT_KEY, JSON.stringify({
-    desktopWidgets: snapshot.desktopWidgets,
-    mobileWidgets: snapshot.mobileWidgets,
-    layoutIndependent: snapshot.layoutIndependent,
-    version: '1.1',
-  }))
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(snapshot.profile))
 }
 
 function PersistenceSync({ initial }: { initial: Stored | null }) {
@@ -135,7 +129,6 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
       if (!response.ok) throw new Error(`Load failed: ${response.status}`)
       const data = await response.json() as { snapshot: Stored | null }
       if (data.snapshot) {
-        primeLocal(data.snapshot)
         setInitial(data.snapshot)
         setState('ready')
       } else {
@@ -163,20 +156,29 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
     await load()
   }
 
-  async function importDraft() {
-    if (!draft) return
-    const response = await fetch('/api/private/editor', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ revision: 0, snapshot: draft }),
-    })
-    if (!response.ok) { setMessage('导入失败，请重试；本地卡片未删除。'); return }
-    const result = await response.json() as { snapshot: Stored }
-    primeLocal(result.snapshot)
-    setInitial(result.snapshot)
-    setState('ready')
+  async function saveInitial(snapshot: Snapshot) {
+    setMessage('')
+    try {
+      const response = await fetch('/api/private/editor', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revision: 0, snapshot }),
+      })
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null) as { error?: string } | null
+        if (response.status === 413) setMessage('卡片数据超过上传上限。原卡片仍在此浏览器，请勿清除浏览器数据。')
+        else if (response.status === 409) setMessage('NAS 已有新数据，请刷新页面后再操作。')
+        else setMessage(`保存失败（${response.status}）：${detail?.error || '请稍后重试'}。原卡片未删除。`)
+        return
+      }
+      const result = await response.json() as { snapshot: Stored }
+      setInitial(result.snapshot)
+      setState('ready')
+    } catch {
+      setMessage('无法连接到 NAS。原卡片仍在此浏览器，请稍后重试。')
+    }
   }
 
-  if (state === 'ready') return <EditorProvider><PersistenceSync initial={initial} />{children}</EditorProvider>
+  if (state === 'ready') return <EditorProvider persistence="external" initialSnapshot={initial || undefined}><PersistenceSync initial={initial} />{children}</EditorProvider>
   return <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-6 text-black">
     <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
       <h1 className="text-2xl font-semibold mb-3">Account Hub</h1>
@@ -188,14 +190,11 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
       </form>}
       {state === 'import' && <>
         <p className="mb-4 text-sm text-gray-600">NAS 数据库还是空的，发现当前浏览器有旧卡片。是否一次性导入？</p>
-        <button className="w-full rounded-xl bg-black p-3 text-white" onClick={() => void importDraft()}>导入本地卡片</button>
-        <button className="mt-3 w-full rounded-xl border p-3" onClick={() => {
-          localStorage.setItem('openbento-legacy-backup', JSON.stringify(draft))
-          localStorage.removeItem(LAYOUT_KEY)
-          localStorage.removeItem(PROFILE_KEY)
-          setInitial(null)
-          setState('ready')
-        }}>从空白开始（旧卡片保留为本地备份）</button>
+        <button className="w-full rounded-xl bg-black p-3 text-white" onClick={() => { if (draft) void saveInitial(draft) }}>导入本地卡片</button>
+        <button className="mt-3 w-full rounded-xl border p-3" onClick={() => void saveInitial({
+          desktopWidgets: [], mobileWidgets: [],
+          layoutIndependent: { desktop: false, mobile: false }, profile: defaultProfile,
+        })}>从空白开始（旧卡片仍留在此浏览器）</button>
       </>}
       {state === 'error' && <button className="rounded-xl bg-black p-3 text-white" onClick={() => void load()}>重试</button>}
       {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
