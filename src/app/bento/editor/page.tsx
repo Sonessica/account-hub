@@ -19,6 +19,8 @@ import { cn } from '@/design-system/utils/cn'
 import type { WidgetConfig, WidgetSize } from '@/bento/widgets/types'
 import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
 
+const GRID_BREAKPOINTS = { mobile: 768, tablet: 1750 }
+
 // ============ Editor View Wrapper ============
 
 const EditorView: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,7 +35,7 @@ const EditorView: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         "transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
                         viewMode === 'mobile'
                             ? "w-[430px] bg-white rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.1)] ring-[12px] ring-black/5 p-6 min-h-[844px]"
-                            : "w-full max-w-[1200px]"
+                            : "w-full max-w-[1760px]"
                     )}
                 >
                     {/* Viewport Label for Mobile */}
@@ -227,7 +229,13 @@ const EditorContent: React.FC = () => {
     }, [widgets, reorderWidgets])
 
     const gridContent = (
-        <ResponsiveBentoGrid columns={4} tabletColumns={3} mobileColumns={2} centered>
+        <ResponsiveBentoGrid
+            columns={8}
+            tabletColumns={4}
+            mobileColumns={2}
+            breakpoints={GRID_BREAKPOINTS}
+            centered
+        >
             {widgets.map((widget) => (
                 <EditableWidget
                     key={widget.id}
