@@ -4,9 +4,9 @@ import React, { useEffect, useRef, useMemo, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { motion } from 'framer-motion'
 
-import { EditorToolbar, useEditor, ProfileSection, EditorFooter } from '@/bento/editor'
+import { EditorToolbar, useEditor, EditorFooter, WidgetEditorPanel } from '@/bento/editor'
 import { WidgetEditOverlay } from '@/bento/editor'
-import { BentoGrid } from '@/bento/grid'
+import { ResponsiveBentoGrid } from '@/bento/grid'
 import { GridDndProvider, DraggableGridItem, swapItems, type GridItem } from '@/bento/dnd'
 import {
     WidgetRenderer,
@@ -85,6 +85,7 @@ interface EditableWidgetProps {
     onSelect: () => void
     onDelete: () => void
     onSizeChange: (size: WidgetSize) => void
+    onUpdate: (updates: Partial<WidgetConfig>) => void
     isEditing: boolean
 }
 
@@ -94,6 +95,7 @@ const EditableWidget: React.FC<EditableWidgetProps> = ({
     onSelect,
     onDelete,
     onSizeChange,
+    onUpdate,
     isEditing,
 }) => {
     const { cols, rows } = parseWidgetSize(widget.size)
@@ -114,6 +116,7 @@ const EditableWidget: React.FC<EditableWidgetProps> = ({
                     widget={widget}
                     onDelete={onDelete}
                     onSizeChange={onSizeChange}
+                    onUpdate={onUpdate}
                 />
             )}
         </div>
@@ -164,6 +167,7 @@ const EditorContent: React.FC = () => {
         addWidget,
         reorderWidgets,
     } = useEditor()
+    const selectedWidget = widgets.find((widget) => widget.id === selectedWidgetId) || null
     const containerRef = useRef<HTMLDivElement>(null)
     const hasInitialized = useRef(false)
 
@@ -192,7 +196,9 @@ const EditorContent: React.FC = () => {
         if (!isEditing) return
 
         const handleClickOutside = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+            const target = e.target as HTMLElement
+            if (target.closest('[data-widget-editor]') || target.closest('[data-widget-overlay]')) return
+            if (containerRef.current && !containerRef.current.contains(target)) {
                 setSelectedWidgetId(null)
             }
         }
@@ -221,7 +227,7 @@ const EditorContent: React.FC = () => {
     }, [widgets, reorderWidgets])
 
     const gridContent = (
-        <BentoGrid columns={4} centered>
+        <ResponsiveBentoGrid columns={4} tabletColumns={3} mobileColumns={2} centered>
             {widgets.map((widget) => (
                 <EditableWidget
                     key={widget.id}
@@ -230,33 +236,16 @@ const EditorContent: React.FC = () => {
                     onSelect={() => setSelectedWidgetId(widget.id)}
                     onDelete={() => removeWidget(widget.id)}
                     onSizeChange={(size) => handleSizeChange(widget.id, size)}
+                    onUpdate={(updates) => updateWidget(widget.id, updates)}
                     isEditing={isEditing}
                 />
             ))}
-        </BentoGrid>
+        </ResponsiveBentoGrid>
     )
 
     return (
-        <div
-            className="flex gap-16 items-start justify-center"
-            ref={containerRef}
-        >
-            {/* Left Column: Profile Section (Fixed) */}
-            <ProfileSection
-                name="Biuty AI"
-                description={
-                    <>
-                        Don't waste another dollar on products that don't work.{' '}
-                        <strong>Let AI analyze your skin.</strong>
-                    </>
-                }
-            />
-            
-            {/* Placeholder to maintain layout spacing */}
-            <div className="w-[380px] shrink-0" aria-hidden="true" />
-
-            {/* Right Column: Widget Grid */}
-            <div className="flex-1 max-w-[780px]">
+        <div className="w-full" ref={containerRef}>
+            <div className="mx-auto w-full">
                 {isEditing ? (
                     <GridDndProvider
                         items={gridItems}
@@ -282,6 +271,13 @@ const EditorContent: React.FC = () => {
                     gridContent
                 )}
             </div>
+            {isEditing && selectedWidget && (
+                <WidgetEditorPanel
+                    widget={selectedWidget}
+                    onUpdate={(updates) => updateWidget(selectedWidget.id, updates)}
+                    onClose={() => setSelectedWidgetId(null)}
+                />
+            )}
         </div>
     )
 }
