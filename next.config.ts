@@ -5,7 +5,10 @@ const nextConfig: NextConfig = {
   // review editor works independently, so keep the preview build isolated.
   typescript: { ignoreBuildErrors: true },
   async redirects() {
-    return [{ source: "/", destination: "/bento/editor", permanent: false }];
+    return [
+      { source: "/", destination: "/bento/editor", permanent: false },
+      { source: "/editor", destination: "/bento/editor", permanent: false },
+    ];
   },
 };
 

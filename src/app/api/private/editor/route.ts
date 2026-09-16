@@ -1,0 +1,39 @@
+import { NextResponse } from 'next/server'
+import { isAuthenticated, sameOrigin } from '@/lib/server/editor-auth'
+import { readEditor, saveEditor, type EditorSnapshot } from '@/lib/server/editor-db'
+
+export const runtime = 'nodejs'
+
+export async function GET() {
+  if (!await isAuthenticated()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return NextResponse.json({ snapshot: readEditor() }, { headers: { 'Cache-Control': 'no-store' } })
+}
+
+function validSnapshot(value: unknown): value is EditorSnapshot {
+  if (!value || typeof value !== 'object') return false
+  const data = value as Record<string, unknown>
+  const layout = data.layoutIndependent as Record<string, unknown> | undefined
+  const profile = data.profile as Record<string, unknown> | undefined
+  return Array.isArray(data.desktopWidgets) && data.desktopWidgets.length <= 500 &&
+    Array.isArray(data.mobileWidgets) && data.mobileWidgets.length <= 500 &&
+    !!layout && typeof layout.desktop === 'boolean' && typeof layout.mobile === 'boolean' &&
+    !!profile && typeof profile.name === 'string' && profile.name.length <= 200 &&
+    typeof profile.description === 'string' && profile.description.length <= 5000 &&
+    (profile.avatarUrl === undefined || typeof profile.avatarUrl === 'string')
+}
+
+export async function PUT(request: Request) {
+  if (!await isAuthenticated()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!sameOrigin(request)) return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
+  const length = Number(request.headers.get('content-length') || 0)
+  if (length > 2_000_000) return NextResponse.json({ error: 'Snapshot too large' }, { status: 413 })
+  const raw = await request.text()
+  if (Buffer.byteLength(raw) > 2_000_000) return NextResponse.json({ error: 'Snapshot too large' }, { status: 413 })
+  const body = (() => { try { return JSON.parse(raw) } catch { return null } })()
+  if (!Number.isSafeInteger(body?.revision) || body.revision < 0 || !validSnapshot(body?.snapshot)) {
+    return NextResponse.json({ error: 'Invalid snapshot' }, { status: 400 })
+  }
+  const saved = saveEditor(body.snapshot, body.revision)
+  if (saved === 'conflict') return NextResponse.json({ error: 'A newer version exists', snapshot: readEditor() }, { status: 409 })
+  return NextResponse.json({ snapshot: saved })
+}

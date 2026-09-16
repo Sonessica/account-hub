@@ -1,0 +1,204 @@
+'use client'
+
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { EditorProvider, useEditor, type ProfileData } from './EditorContext'
+import type { WidgetConfig } from '../widgets/types'
+
+type Snapshot = {
+  desktopWidgets: WidgetConfig[]
+  mobileWidgets: WidgetConfig[]
+  layoutIndependent: { desktop: boolean; mobile: boolean }
+  profile: ProfileData
+}
+type Stored = Snapshot & { revision: number; updatedAt: string }
+type GateState = 'loading' | 'login' | 'import' | 'ready' | 'error'
+type SaveState = 'saved' | 'saving' | 'error' | 'conflict'
+
+const LAYOUT_KEY = 'openbento-widgets'
+const PROFILE_KEY = 'openbento-profile'
+const defaultProfile: ProfileData = {
+  name: 'LinkCard',
+  description: 'The first context-aware identity OS. Create a dynamic Link Card that lives natively in Apple Wallet. Features AI agents, offline sync, and zero-app sharing.',
+}
+
+function localSnapshot(): Snapshot | null {
+  try {
+    const layout = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null')
+    const profile = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null')
+    const desktopWidgets = Array.isArray(layout?.desktopWidgets) ? layout.desktopWidgets : Array.isArray(layout?.widgets) ? layout.widgets : []
+    const mobileWidgets = Array.isArray(layout?.mobileWidgets) ? layout.mobileWidgets : desktopWidgets
+    const hasProfile = profile && (profile.name !== defaultProfile.name || profile.description !== defaultProfile.description || profile.avatarUrl)
+    if (!desktopWidgets.length && !mobileWidgets.length && !hasProfile) return null
+    return {
+      desktopWidgets, mobileWidgets,
+      layoutIndependent: layout?.layoutIndependent || { desktop: false, mobile: false },
+      profile: profile || defaultProfile,
+    }
+  } catch {
+    return null
+  }
+}
+
+function primeLocal(snapshot: Snapshot) {
+  localStorage.setItem(LAYOUT_KEY, JSON.stringify({
+    desktopWidgets: snapshot.desktopWidgets,
+    mobileWidgets: snapshot.mobileWidgets,
+    layoutIndependent: snapshot.layoutIndependent,
+    version: '1.1',
+  }))
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(snapshot.profile))
+}
+
+function PersistenceSync({ initial }: { initial: Stored | null }) {
+  const { desktopWidgets, mobileWidgets, layoutIndependent, profile } = useEditor()
+  const [status, setStatus] = useState<SaveState>('saved')
+  const revision = useRef(initial?.revision || 0)
+  const latest = useRef<Snapshot>({ desktopWidgets, mobileWidgets, layoutIndependent, profile })
+  const savedHash = useRef(initial ? JSON.stringify({
+    desktopWidgets: initial.desktopWidgets, mobileWidgets: initial.mobileWidgets,
+    layoutIndependent: initial.layoutIndependent, profile: initial.profile,
+  }) : '')
+  const running = useRef(false)
+  const conflicted = useRef(false)
+  const hydrated = useRef(false)
+
+  const save = useCallback(async () => {
+    if (running.current || conflicted.current) return
+    running.current = true
+    try {
+      while (JSON.stringify(latest.current) !== savedHash.current) {
+        const snapshot = latest.current
+        const hash = JSON.stringify(snapshot)
+        setStatus('saving')
+        const response = await fetch('/api/private/editor', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin', body: JSON.stringify({ revision: revision.current, snapshot }),
+        })
+        if (response.status === 409) {
+          conflicted.current = true
+          setStatus('conflict')
+          return
+        }
+        if (!response.ok) throw new Error(`Save failed: ${response.status}`)
+        const result = await response.json() as { snapshot: Stored }
+        revision.current = result.snapshot.revision
+        savedHash.current = hash
+      }
+      setStatus('saved')
+    } catch (error) {
+      console.error(error)
+      setStatus('error')
+    } finally {
+      running.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => { hydrated.current = true }, 400)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    latest.current = { desktopWidgets, mobileWidgets, layoutIndependent, profile }
+    const timer = setTimeout(() => {
+      if (!hydrated.current) return
+      const snapshot = latest.current
+      if (!initial && !snapshot.desktopWidgets.length && !snapshot.mobileWidgets.length &&
+          snapshot.profile.name === defaultProfile.name && snapshot.profile.description === defaultProfile.description) return
+      if (JSON.stringify(snapshot) !== savedHash.current) void save()
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [desktopWidgets, mobileWidgets, layoutIndependent, profile, initial, save])
+
+  return <div role="status" className="fixed top-4 right-4 z-[100] rounded-xl bg-white/95 px-4 py-2 text-sm text-black shadow-lg">
+    {status === 'saved' && '已保存到 NAS'}
+    {status === 'saving' && '正在保存…'}
+    {status === 'error' && <><span>保存失败，修改仍在此浏览器。</span><button className="ml-3 underline" onClick={() => void save()}>重试</button></>}
+    {status === 'conflict' && <><span>其他浏览器已更新，请先刷新页面。</span><button className="ml-3 underline" onClick={() => location.reload()}>刷新</button></>}
+  </div>
+}
+
+export function PersistentEditorProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<GateState>('loading')
+  const [password, setPassword] = useState('')
+  const [message, setMessage] = useState('')
+  const [initial, setInitial] = useState<Stored | null>(null)
+  const [draft, setDraft] = useState<Snapshot | null>(null)
+
+  const load = useCallback(async () => {
+    setState('loading')
+    try {
+      const sessionResponse = await fetch('/api/private/session', { cache: 'no-store' })
+      const session = await sessionResponse.json()
+      if (!session.authenticated) { setState('login'); return }
+      const response = await fetch('/api/private/editor', { cache: 'no-store' })
+      if (!response.ok) throw new Error(`Load failed: ${response.status}`)
+      const data = await response.json() as { snapshot: Stored | null }
+      if (data.snapshot) {
+        primeLocal(data.snapshot)
+        setInitial(data.snapshot)
+        setState('ready')
+      } else {
+        const local = localSnapshot()
+        if (local) { setDraft(local); setState('import') }
+        else { setInitial(null); setState('ready') }
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '无法连接到 NAS 数据库')
+      setState('error')
+    }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  async function login(event: React.FormEvent) {
+    event.preventDefault()
+    setMessage('')
+    const response = await fetch('/api/private/session', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    })
+    if (!response.ok) { setMessage('密码错误或登录失败'); return }
+    setPassword('')
+    await load()
+  }
+
+  async function importDraft() {
+    if (!draft) return
+    const response = await fetch('/api/private/editor', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ revision: 0, snapshot: draft }),
+    })
+    if (!response.ok) { setMessage('导入失败，请重试；本地卡片未删除。'); return }
+    const result = await response.json() as { snapshot: Stored }
+    primeLocal(result.snapshot)
+    setInitial(result.snapshot)
+    setState('ready')
+  }
+
+  if (state === 'ready') return <EditorProvider><PersistenceSync initial={initial} />{children}</EditorProvider>
+  return <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-6 text-black">
+    <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
+      <h1 className="text-2xl font-semibold mb-3">Account Hub</h1>
+      {state === 'loading' && <p>正在读取 NAS 数据…</p>}
+      {state === 'login' && <form onSubmit={login}>
+        <p className="mb-4 text-sm text-gray-600">请输入此账号中心的管理密码。</p>
+        <input className="w-full rounded-xl border p-3" type="password" value={password} onChange={event => setPassword(event.target.value)} autoFocus required />
+        <button className="mt-4 w-full rounded-xl bg-black p-3 text-white" type="submit">进入</button>
+      </form>}
+      {state === 'import' && <>
+        <p className="mb-4 text-sm text-gray-600">NAS 数据库还是空的，发现当前浏览器有旧卡片。是否一次性导入？</p>
+        <button className="w-full rounded-xl bg-black p-3 text-white" onClick={() => void importDraft()}>导入本地卡片</button>
+        <button className="mt-3 w-full rounded-xl border p-3" onClick={() => {
+          localStorage.setItem('openbento-legacy-backup', JSON.stringify(draft))
+          localStorage.removeItem(LAYOUT_KEY)
+          localStorage.removeItem(PROFILE_KEY)
+          setInitial(null)
+          setState('ready')
+        }}>从空白开始（旧卡片保留为本地备份）</button>
+      </>}
+      {state === 'error' && <button className="rounded-xl bg-black p-3 text-white" onClick={() => void load()}>重试</button>}
+      {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
+    </div>
+  </div>
+}

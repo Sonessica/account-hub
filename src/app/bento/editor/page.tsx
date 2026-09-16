@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useMemo, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { motion } from 'framer-motion'
 
-import { EditorProvider, EditorToolbar, useEditor, ProfileSection, EditorFooter } from '@/bento/editor'
+import { EditorToolbar, useEditor, ProfileSection, EditorFooter } from '@/bento/editor'
 import { WidgetEditOverlay } from '@/bento/editor'
 import { BentoGrid } from '@/bento/grid'
 import { GridDndProvider, DraggableGridItem, swapItems, type GridItem } from '@/bento/dnd'
@@ -17,6 +17,7 @@ import {
 } from '@/bento/widgets'
 import { cn } from '@/design-system/utils/cn'
 import type { WidgetConfig, WidgetSize } from '@/bento/widgets/types'
+import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
 
 // ============ Editor View Wrapper ============
 
@@ -289,10 +290,10 @@ const EditorContent: React.FC = () => {
 
 export default function EditorPage() {
     return (
-        <EditorProvider>
+        <PersistentEditorProvider>
             <EditorView>
                 <EditorContent />
             </EditorView>
-        </EditorProvider>
+        </PersistentEditorProvider>
     )
 }
