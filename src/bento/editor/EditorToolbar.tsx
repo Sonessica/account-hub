@@ -1,9 +1,9 @@
 'use client'
 
 /**
- * [INPUT]: (EditorContext, useDeviceDetection) - Editor context providing viewMode, setViewMode, addWidget functions, and device detection hook
- * [OUTPUT]: React component - Fixed bottom toolbar with widget creation buttons (Link, Image, Text, Map, Section Title), view mode toggle, link/section title input modals, and conditional share button (desktop only)
- * [POS]: Located at /bento/editor, provides primary editing interface with widget creation, sharing (desktop only), and view mode switching, adapts UI based on device detection
+ * [INPUT]: (EditorContext, useDeviceDetection) - Editor context providing widget creation functions and device detection
+ * [OUTPUT]: React component - Fixed bottom toolbar with widget creation buttons, link/section title input modals, and desktop sharing
+ * [POS]: Located at /bento/editor, provides the primary single-layout editing interface and adapts to device size
  * 
  * [PROTOCOL]:
  * 1. Once this file's logic changes, this Header must be synchronized immediately.
@@ -18,11 +18,9 @@ import {
     TextH,
     MapPin, 
     GridFour,
-    Share,
-    Monitor,
-    DeviceMobile
+    Share
 } from 'phosphor-react'
-import { useEditor, ViewMode } from './EditorContext'
+import { useEditor } from './EditorContext'
 import {
     createLinkWidgetConfig,
     createImageWidgetConfig,
@@ -130,32 +128,10 @@ const SectionTitleIcon = () => (
     />
 )
 
-const DesktopIcon = ({ active }: { active: boolean }) => (
-    <Monitor 
-        size={16} 
-        weight="duotone" 
-        color={active ? '#ffffff' : '#999999'}
-        style={{ 
-            '--duotone-secondary': active ? '#e0e0e0' : '#cccccc'
-        } as React.CSSProperties}
-    />
-)
-
-const MobileIcon = ({ active }: { active: boolean }) => (
-    <DeviceMobile 
-        size={16} 
-        weight="duotone" 
-        color={active ? '#ffffff' : '#999999'}
-        style={{ 
-            '--duotone-secondary': active ? '#e0e0e0' : '#cccccc'
-        } as React.CSSProperties}
-    />
-)
-
 // ============ Component ============
 
 export const EditorToolbar: React.FC = () => {
-    const { viewMode, setViewMode, addWidget } = useEditor()
+    const { addWidget } = useEditor()
     const isMobileDevice = useDeviceDetection()
     const [showLinkModal, setShowLinkModal] = useState(false)
     const [linkUrl, setLinkUrl] = useState('')
@@ -485,41 +461,6 @@ export const EditorToolbar: React.FC = () => {
                         />
                     </div>
 
-                    {/* Desktop: View Mode Toggle */}
-                    {!isMobileDevice && (
-                        <>
-                            <div className="w-[2px] h-4 bg-black/12 rounded-full mx-1" />
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => setViewMode('desktop')}
-                                    className={cn(
-                                        "flex items-center justify-center",
-                                        "h-[33px] w-[50px] rounded-[6px]",
-                                        "transition-all duration-200",
-                                        viewMode === 'desktop'
-                                            ? "bg-black shadow-[0px_3px_2px_0px_rgba(0,0,0,0.06)]"
-                                            : "hover:bg-black/5"
-                                    )}
-                                >
-                                    <DesktopIcon active={viewMode === 'desktop'} />
-                                </button>
-                                <div className="w-[4px]" />
-                                <button
-                                    onClick={() => setViewMode('mobile')}
-                                    className={cn(
-                                        "flex items-center justify-center",
-                                        "h-[33px] w-[50px] rounded-[6px]",
-                                        "transition-all duration-200",
-                                        viewMode === 'mobile'
-                                            ? "bg-black shadow-[0px_3px_2px_0px_rgba(0,0,0,0.06)]"
-                                            : "hover:bg-black/5"
-                                    )}
-                                >
-                                    <MobileIcon active={viewMode === 'mobile'} />
-                                </button>
-                            </div>
-                        </>
-                    )}
                 </div>
             </div>
         </>

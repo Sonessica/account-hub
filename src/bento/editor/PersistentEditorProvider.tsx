@@ -6,9 +6,7 @@ import type { WidgetConfig } from '../widgets/types'
 import savingLoader from './SavingLoader.module.css'
 
 type Snapshot = {
-  desktopWidgets: WidgetConfig[]
-  mobileWidgets: WidgetConfig[]
-  layoutIndependent: { desktop: boolean; mobile: boolean }
+  widgets: WidgetConfig[]
   profile: ProfileData
 }
 type Stored = Snapshot & { revision: number; updatedAt: string }
@@ -26,13 +24,11 @@ function localSnapshot(): Snapshot | null {
   try {
     const layout = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null')
     const profile = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null')
-    const desktopWidgets = Array.isArray(layout?.desktopWidgets) ? layout.desktopWidgets : Array.isArray(layout?.widgets) ? layout.widgets : []
-    const mobileWidgets = Array.isArray(layout?.mobileWidgets) ? layout.mobileWidgets : desktopWidgets
+    const widgets = Array.isArray(layout?.desktopWidgets) ? layout.desktopWidgets : Array.isArray(layout?.widgets) ? layout.widgets : []
     const hasProfile = profile && (profile.name !== defaultProfile.name || profile.description !== defaultProfile.description || profile.avatarUrl)
-    if (!desktopWidgets.length && !mobileWidgets.length && !hasProfile) return null
+    if (!widgets.length && !hasProfile) return null
     return {
-      desktopWidgets, mobileWidgets,
-      layoutIndependent: layout?.layoutIndependent || { desktop: false, mobile: false },
+      widgets,
       profile: {
         name: typeof profile?.name === 'string' ? profile.name : defaultProfile.name,
         description: typeof profile?.description === 'string' ? profile.description : defaultProfile.description,
@@ -45,13 +41,12 @@ function localSnapshot(): Snapshot | null {
 }
 
 function PersistenceSync({ initial }: { initial: Stored | null }) {
-  const { desktopWidgets, mobileWidgets, layoutIndependent, profile } = useEditor()
+  const { widgets, profile } = useEditor()
   const [status, setStatus] = useState<SaveState>('saved')
   const revision = useRef(initial?.revision || 0)
-  const latest = useRef<Snapshot>({ desktopWidgets, mobileWidgets, layoutIndependent, profile })
+  const latest = useRef<Snapshot>({ widgets, profile })
   const savedHash = useRef(initial ? JSON.stringify({
-    desktopWidgets: initial.desktopWidgets, mobileWidgets: initial.mobileWidgets,
-    layoutIndependent: initial.layoutIndependent, profile: initial.profile,
+    widgets: initial.widgets, profile: initial.profile,
   }) : '')
   const running = useRef(false)
   const conflicted = useRef(false)
@@ -97,16 +92,16 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
   }, [])
 
   useEffect(() => {
-    latest.current = { desktopWidgets, mobileWidgets, layoutIndependent, profile }
+    latest.current = { widgets, profile }
     const timer = setTimeout(() => {
       if (!hydrated.current) return
       const snapshot = latest.current
-      if (!initial && !snapshot.desktopWidgets.length && !snapshot.mobileWidgets.length &&
+      if (!initial && !snapshot.widgets.length &&
           snapshot.profile.name === defaultProfile.name && snapshot.profile.description === defaultProfile.description) return
       if (JSON.stringify(snapshot) !== savedHash.current) void save()
     }, 1500)
     return () => clearTimeout(timer)
-  }, [desktopWidgets, mobileWidgets, layoutIndependent, profile, initial, save])
+  }, [widgets, profile, initial, save])
 
   if (status === 'saved') return null
   if (status === 'saving') return <div role="status" aria-label="正在保存到 NAS" className="fixed top-3 right-4 z-[100] rounded-xl bg-white/95 px-3 pb-3 pt-1 shadow-lg">
@@ -187,7 +182,12 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
     }
   }
 
-  if (state === 'ready') return <EditorProvider persistence="external" initialSnapshot={initial || undefined}><PersistenceSync initial={initial} />{children}</EditorProvider>
+  if (state === 'ready') return <EditorProvider persistence="external" initialSnapshot={initial ? {
+    desktopWidgets: initial.widgets,
+    mobileWidgets: [],
+    layoutIndependent: { desktop: false, mobile: false },
+    profile: initial.profile,
+  } : undefined}><PersistenceSync initial={initial} />{children}</EditorProvider>
   return <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-6 text-black">
     <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
       <h1 className="text-2xl font-semibold mb-3">Account Hub</h1>
@@ -201,8 +201,7 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
         <p className="mb-4 text-sm text-gray-600">NAS 数据库还是空的，发现当前浏览器有旧卡片。是否一次性导入？</p>
         <button className="w-full rounded-xl bg-black p-3 text-white" onClick={() => { if (draft) void saveInitial(draft) }}>导入本地卡片</button>
         <button className="mt-3 w-full rounded-xl border p-3" onClick={() => void saveInitial({
-          desktopWidgets: [], mobileWidgets: [],
-          layoutIndependent: { desktop: false, mobile: false }, profile: defaultProfile,
+          widgets: [], profile: defaultProfile,
         })}>从空白开始（旧卡片仍留在此浏览器）</button>
       </>}
       {state === 'error' && <button className="rounded-xl bg-black p-3 text-white" onClick={() => void load()}>重试</button>}

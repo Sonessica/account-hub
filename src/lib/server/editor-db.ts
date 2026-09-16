@@ -5,9 +5,7 @@ import { dirname, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 
 export interface EditorSnapshot {
-  desktopWidgets: unknown[]
-  mobileWidgets: unknown[]
-  layoutIndependent: { desktop: boolean; mobile: boolean }
+  widgets: unknown[]
   profile: { name: string; description: string; avatarUrl?: string }
 }
 
@@ -40,7 +38,14 @@ export function readEditor(): StoredEditor | null {
   const row = getDatabase().prepare('SELECT revision, snapshot, updated_at FROM editor_state WHERE id = 1')
     .get() as { revision: number; snapshot: string; updated_at: string } | undefined
   if (!row) return null
-  return { ...JSON.parse(row.snapshot) as EditorSnapshot, revision: row.revision, updatedAt: row.updated_at }
+  const parsed = JSON.parse(row.snapshot) as Partial<EditorSnapshot> & { desktopWidgets?: unknown[] }
+  const snapshot: EditorSnapshot = {
+    widgets: Array.isArray(parsed.widgets)
+      ? parsed.widgets
+      : Array.isArray(parsed.desktopWidgets) ? parsed.desktopWidgets : [],
+    profile: parsed.profile || { name: 'LinkCard', description: '' },
+  }
+  return { ...snapshot, revision: row.revision, updatedAt: row.updated_at }
 }
 
 export function saveEditor(snapshot: EditorSnapshot, expectedRevision: number): StoredEditor | 'conflict' {

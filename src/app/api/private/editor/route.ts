@@ -13,11 +13,8 @@ export async function GET() {
 function validSnapshot(value: unknown): value is EditorSnapshot {
   if (!value || typeof value !== 'object') return false
   const data = value as Record<string, unknown>
-  const layout = data.layoutIndependent as Record<string, unknown> | undefined
   const profile = data.profile as Record<string, unknown> | undefined
-  return Array.isArray(data.desktopWidgets) && data.desktopWidgets.length <= 500 &&
-    Array.isArray(data.mobileWidgets) && data.mobileWidgets.length <= 500 &&
-    !!layout && typeof layout.desktop === 'boolean' && typeof layout.mobile === 'boolean' &&
+  return Array.isArray(data.widgets) && data.widgets.length <= 500 &&
     !!profile && typeof profile.name === 'string' && profile.name.length <= 200 &&
     typeof profile.description === 'string' && profile.description.length <= 5000 &&
     (profile.avatarUrl === undefined || typeof profile.avatarUrl === 'string')

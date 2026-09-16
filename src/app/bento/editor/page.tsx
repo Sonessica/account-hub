@@ -15,7 +15,6 @@ import {
     createTextWidgetConfig,
     createMapWidgetConfig,
 } from '@/bento/widgets'
-import { cn } from '@/design-system/utils/cn'
 import type { WidgetConfig, WidgetSize } from '@/bento/widgets/types'
 import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
 
@@ -24,32 +23,14 @@ const GRID_BREAKPOINTS = { mobile: 768, tablet: 1750 }
 // ============ Editor View Wrapper ============
 
 const EditorView: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { viewMode } = useEditor()
-
     return (
         <div className="min-h-screen bg-[#F5F5F7] pb-32 transition-colors duration-500">
             {/* Main Content Area */}
             <div className="flex justify-center px-8 py-12 overflow-x-hidden">
                 <div
-                    className={cn(
-                        "transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
-                        viewMode === 'mobile'
-                            ? "w-[430px] bg-white rounded-[48px] shadow-[0_40px_100px_rgba(0,0,0,0.1)] ring-[12px] ring-black/5 p-6 min-h-[844px]"
-                            : "w-full max-w-[1760px]"
-                    )}
+                    className="w-full max-w-[1760px] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
                 >
-                    {/* Viewport Label for Mobile */}
-                    <div className={cn(
-                        "text-center mb-6 transition-opacity duration-300",
-                        viewMode === 'mobile' ? "opacity-100" : "opacity-0 h-0 overflow-hidden"
-                    )}>
-                        <span className="text-[12px] font-semibold text-black/20 uppercase tracking-widest">Mobile View (iPhone 14 Pro)</span>
-                    </div>
-
-                    <div className={cn(
-                        "transition-all duration-500",
-                        viewMode === 'mobile' ? "scale-[0.85] origin-top" : "scale-100"
-                    )}>
+                    <div className="transition-all duration-500">
                         {children}
                     </div>
                 </div>
