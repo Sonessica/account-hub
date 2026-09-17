@@ -92,8 +92,7 @@ function ImagePreview({ src }: { src: string }) {
                     <div className="absolute inset-0 grid place-items-center text-sm text-black/40">暂无图片</div>
                 )}
             </div>
-            <div className="mt-2 flex items-center justify-between text-xs text-black/45">
-                <span>滚轮缩放 · 拖动查看局部</span>
+            <div className="mt-2 flex justify-end text-xs text-black/45">
                 <span>{Math.round(scale * 100)}%</span>
             </div>
         </div>
