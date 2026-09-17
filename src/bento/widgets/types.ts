@@ -60,6 +60,10 @@ export interface BaseWidgetConfig {
     id: string
     category: WidgetCategory
     size: WidgetSize
+    /** Grid column origin on infinite canvas (search box occupies 0..3, row 0) */
+    x?: number
+    /** Grid row origin on infinite canvas */
+    y?: number
 }
 
 // ============ Link Widget ============
