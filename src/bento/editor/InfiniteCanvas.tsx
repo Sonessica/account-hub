@@ -188,9 +188,15 @@ export function InfiniteCanvas({
         if (c && isEditing) {
             const dx = e.clientX - c.startX
             const dy = e.clientY - c.startY
-            if (Math.abs(dx) + Math.abs(dy) > 6) c.moved = true
-            dragX.set(dx)
-            dragY.set(dy)
+            if (!c.moved && Math.abs(dx) + Math.abs(dy) > 8) {
+                c.moved = true
+                setDraggingId(c.id)
+                ;(viewportRef.current as HTMLElement)?.setPointerCapture(e.pointerId)
+            }
+            if (c.moved) {
+                dragX.set(dx)
+                dragY.set(dy)
+            }
         }
     }
 
@@ -216,9 +222,9 @@ export function InfiniteCanvas({
         const x = typeof w.x === 'number' ? w.x : 0
         const y = typeof w.y === 'number' ? w.y : 0
         cardDrag.current = { id: w.id, startX: e.clientX, startY: e.clientY, origX: x, origY: y, moved: false }
-        setDraggingId(w.id)
         dragX.set(0)
         dragY.set(0)
+        // Capture so pointerup always hits the viewport handler
         ;(viewportRef.current as HTMLElement)?.setPointerCapture(e.pointerId)
         onSelect(w.id)
     }
