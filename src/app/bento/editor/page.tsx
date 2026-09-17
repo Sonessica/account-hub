@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useMemo, useCallback } from 'react'
+import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { motion } from 'framer-motion'
 
@@ -65,7 +65,9 @@ const parseWidgetSize = (size: WidgetSize): { cols: number; rows: number } => {
 interface EditableWidgetProps {
     widget: WidgetConfig
     isSelected: boolean
+    isEditPanelOpen: boolean
     onSelect: () => void
+    onEdit: () => void
     onDelete: () => void
     onSizeChange: (size: WidgetSize) => void
     onUpdate: (updates: Partial<WidgetConfig>) => void
@@ -75,22 +77,44 @@ interface EditableWidgetProps {
 const EditableWidget: React.FC<EditableWidgetProps> = ({
     widget,
     isSelected,
+    isEditPanelOpen,
     onSelect,
+    onEdit,
     onDelete,
     onSizeChange,
     onUpdate,
     isEditing,
 }) => {
     const { cols, rows } = parseWidgetSize(widget.size)
+    const clickTimerRef = useRef<number | null>(null)
 
     const content = (
         <div
             className="relative w-full h-full"
             onClick={(e) => {
-                if (isEditing) {
+                if (!isEditing) return
+                // Double-click opens the editor panel; delay single-click select
+                if (clickTimerRef.current !== null) {
+                    window.clearTimeout(clickTimerRef.current)
+                    clickTimerRef.current = null
+                    return
+                }
+                clickTimerRef.current = window.setTimeout(() => {
+                    clickTimerRef.current = null
                     e.stopPropagation()
                     onSelect()
+                }, 220)
+            }}
+            onDoubleClick={(e) => {
+                if (!isEditing) return
+                e.stopPropagation()
+                e.preventDefault()
+                if (clickTimerRef.current !== null) {
+                    window.clearTimeout(clickTimerRef.current)
+                    clickTimerRef.current = null
                 }
+                onSelect()
+                onEdit()
             }}
         >
             <WidgetRenderer
@@ -98,7 +122,7 @@ const EditableWidget: React.FC<EditableWidgetProps> = ({
                 isEditing={isEditing}
                 onConfigChange={onUpdate}
             />
-            {isEditing && isSelected && (
+            {isEditing && isSelected && !isEditPanelOpen && (
                 <WidgetEditOverlay
                     widget={widget}
                     onDelete={onDelete}
@@ -154,7 +178,8 @@ const EditorContent: React.FC = () => {
         addWidget,
         reorderWidgets,
     } = useEditor()
-    const selectedWidget = widgets.find((widget) => widget.id === selectedWidgetId) || null
+    const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
+    const editingWidget = widgets.find((widget) => widget.id === editingWidgetId) || null
     const containerRef = useRef<HTMLDivElement>(null)
     const hasInitialized = useRef(false)
 
@@ -187,6 +212,7 @@ const EditorContent: React.FC = () => {
             if (target.closest('[data-widget-editor]') || target.closest('[data-widget-overlay]')) return
             if (containerRef.current && !containerRef.current.contains(target)) {
                 setSelectedWidgetId(null)
+                setEditingWidgetId(null)
             }
         }
 
@@ -226,7 +252,9 @@ const EditorContent: React.FC = () => {
                     key={widget.id}
                     widget={widget}
                     isSelected={selectedWidgetId === widget.id}
+                    isEditPanelOpen={editingWidgetId === widget.id}
                     onSelect={() => setSelectedWidgetId(widget.id)}
+                    onEdit={() => setEditingWidgetId(widget.id)}
                     onDelete={() => removeWidget(widget.id)}
                     onSizeChange={(size) => handleSizeChange(widget.id, size)}
                     onUpdate={(updates) => updateWidget(widget.id, updates)}
@@ -264,11 +292,11 @@ const EditorContent: React.FC = () => {
                     gridContent
                 )}
             </div>
-            {isEditing && selectedWidget && (
+            {isEditing && editingWidget && (
                 <WidgetEditorPanel
-                    widget={selectedWidget}
-                    onUpdate={(updates) => updateWidget(selectedWidget.id, updates)}
-                    onClose={() => setSelectedWidgetId(null)}
+                    widget={editingWidget}
+                    onUpdate={(updates) => updateWidget(editingWidget.id, updates)}
+                    onClose={() => setEditingWidgetId(null)}
                 />
             )}
         </div>
