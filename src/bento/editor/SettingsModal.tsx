@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { ProfileData } from './EditorContext'
-import type { QuickNavItem, SiteSettings } from './siteSettings'
 import { uploadImage } from '@/lib/client/upload-image'
 
 const fieldClass = 'w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/5'
@@ -10,32 +9,27 @@ const labelClass = 'grid gap-1.5 text-xs font-medium text-black/60'
 const btnClass = 'rounded-xl bg-black px-3 py-2.5 text-sm font-medium text-white hover:bg-black/80'
 const btnGhostClass = 'rounded-xl border border-black/15 px-3 py-2.5 text-sm font-medium text-black hover:bg-black/5'
 
-export const APP_VERSION = '0.4.0'
+export const APP_VERSION = '0.4.1'
 
-type Tab = 'profile' | 'nav' | 'data' | 'about'
+type Tab = 'profile' | 'data' | 'about'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'profile', label: '个人资料' },
-  { id: 'nav', label: '快捷导航' },
   { id: 'data', label: '数据' },
   { id: 'about', label: '关于' },
 ]
 
 export function SettingsModal({
   profile,
-  settings,
   onProfileChange,
-  onSettingsChange,
   onClose,
 }: {
   profile: ProfileData
-  settings: SiteSettings
   onProfileChange: (patch: Partial<ProfileData>) => void
-  onSettingsChange: (settings: SiteSettings) => void
   onClose: () => void
 }) {
   const [tab, setTab] = useState<Tab>('profile')
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null)
+  const [status, setStatus] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -46,32 +40,22 @@ export function SettingsModal({
 
   const replaceAvatar = async (file?: File) => {
     if (!file) return
-    setUploadStatus('上传中…')
+    setStatus('上传中…')
     try {
       onProfileChange({ avatarUrl: await uploadImage(file) })
-      setUploadStatus('头像已更新')
+      setStatus('头像已更新')
     } catch (error) {
-      setUploadStatus(error instanceof Error ? error.message : '上传失败')
+      setStatus(error instanceof Error ? error.message : '上传失败')
     }
-  }
-
-  const updateNav = (id: string, patch: Partial<QuickNavItem>) => {
-    onSettingsChange({
-      quickNav: settings.quickNav.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-    })
   }
 
   const exportJson = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      profile,
-      settings,
-    }
+    const payload = { exportedAt: new Date().toISOString(), profile }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `atchooo-settings-${Date.now()}.json`
+    a.download = `atchooo-profile-${Date.now()}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -79,13 +63,11 @@ export function SettingsModal({
   const importJson = async (file?: File) => {
     if (!file) return
     try {
-      const text = await file.text()
-      const data = JSON.parse(text) as { profile?: Partial<ProfileData>; settings?: SiteSettings }
+      const data = JSON.parse(await file.text()) as { profile?: Partial<ProfileData> }
       if (data.profile) onProfileChange(data.profile)
-      if (data.settings?.quickNav) onSettingsChange(data.settings)
-      setUploadStatus('已导入设置')
+      setStatus('已导入资料')
     } catch {
-      setUploadStatus('导入失败：文件格式不正确')
+      setStatus('导入失败：文件格式不正确')
     }
   }
 
@@ -151,38 +133,14 @@ export function SettingsModal({
                     <input ref={fileRef} type="file" accept="image/*" className="hidden"
                       onChange={(e) => { void replaceAvatar(e.target.files?.[0]); e.target.value = '' }} />
                   </div>
-                  {uploadStatus && <span className="text-xs font-normal text-black/50">{uploadStatus}</span>}
+                  {status && <span className="text-xs font-normal text-black/50">{status}</span>}
                 </label>
-              </div>
-            )}
-
-            {tab === 'nav' && (
-              <div className="grid gap-4">
-                <p className="text-sm text-black/55">显示在页面右上角的常驻入口，例如密码库、家庭自动化等。</p>
-                {settings.quickNav.map((item) => (
-                  <div key={item.id} className="grid gap-2 rounded-2xl border border-black/10 p-3 sm:grid-cols-[1fr_2fr_auto]">
-                    <input className={fieldClass} value={item.label} placeholder="名称"
-                      onChange={(e) => updateNav(item.id, { label: e.target.value })} />
-                    <input className={fieldClass} value={item.url} placeholder="https://…"
-                      onChange={(e) => updateNav(item.id, { url: e.target.value })} />
-                    <button type="button" className={btnGhostClass}
-                      onClick={() => onSettingsChange({ quickNav: settings.quickNav.filter((x) => x.id !== item.id) })}>
-                      删除
-                    </button>
-                  </div>
-                ))}
-                <button type="button" className={btnGhostClass}
-                  onClick={() => onSettingsChange({
-                    quickNav: [...settings.quickNav, { id: crypto.randomUUID(), label: '新链接', url: 'https://' }],
-                  })}>
-                  添加入口
-                </button>
               </div>
             )}
 
             {tab === 'data' && (
               <div className="grid gap-4">
-                <p className="text-sm text-black/55">导出/导入仅包含资料与快捷导航；卡片布局仍在编辑器中直接维护。</p>
+                <p className="text-sm text-black/55">导出/导入个人资料 JSON。</p>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className={btnClass} onClick={exportJson}>导出 JSON</button>
                   <button type="button" className={btnGhostClass} onClick={() => {
@@ -193,7 +151,7 @@ export function SettingsModal({
                     input.click()
                   }}>导入 JSON</button>
                 </div>
-                {uploadStatus && <p className="text-xs text-black/50">{uploadStatus}</p>}
+                {status && <p className="text-xs text-black/50">{status}</p>}
               </div>
             )}
 
@@ -201,7 +159,7 @@ export function SettingsModal({
               <div className="grid gap-2 text-sm text-black/70">
                 <p className="text-lg font-semibold text-black">ATCHOOO Account Hub</p>
                 <p>版本 {APP_VERSION}</p>
-                <p>个人名片 / 导航站 · 数据存于 NAS SQLite</p>
+                <p>个人名片站 · 数据存于 NAS SQLite</p>
                 <p className="text-black/45">公开可访问；编辑与设置在本机自动保存。</p>
               </div>
             )}

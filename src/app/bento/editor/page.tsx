@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 
 import { EditorToolbar, useEditor, EditorFooter, WidgetEditorPanel } from '@/bento/editor'
 import { WidgetEditOverlay } from '@/bento/editor'
-import { QuickNav } from '@/bento/editor/QuickNav'
 import { SettingsModal } from '@/bento/editor/SettingsModal'
 import { ResponsiveBentoGrid } from '@/bento/grid'
 import { GridDndProvider, DraggableGridItem, swapItems, type GridItem } from '@/bento/dnd'
@@ -284,14 +283,11 @@ const HubShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         setIsEditing,
         profile,
         updateProfile,
-        siteSettings,
-        updateSiteSettings,
     } = useEditor()
     const [showSettings, setShowSettings] = useState(false)
 
     return (
         <>
-            <QuickNav items={siteSettings.quickNav} />
             {children}
             <EditorFooter
                 isEditing={isEditing}
@@ -301,9 +297,7 @@ const HubShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {showSettings && (
                 <SettingsModal
                     profile={profile}
-                    settings={siteSettings}
                     onProfileChange={updateProfile}
-                    onSettingsChange={updateSiteSettings}
                     onClose={() => setShowSettings(false)}
                 />
             )}

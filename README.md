@@ -8,7 +8,7 @@ Self-hosted personal account / Bento editor for a single trusted environment (NA
 - **Public, no password**; default view mode, footer "编辑" enters edit
 - Data stored in local SQLite (`node:sqlite`), not Supabase
 - ATCHOOO splash intro; images as WebP under `data/media`
-- Footer settings: profile, quick nav (Vaultwarden, etc.), export/import
+- Footer settings: profile, export/import
 
 ## Requirements
 
