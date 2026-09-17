@@ -448,6 +448,9 @@ const PLATFORM_ICON_BACKGROUNDS: Record<string, string> = {
 
 
 // ============ Link Widget Component (uiverse cowardly-newt style) ============
+// Rest: white/empty face + thin pink bottom bar (icon | CTA)
+// Hover: pink panel expands up; media shrinks to top-left circle avatar;
+//        title/subtitle live inside the expanded panel (revealed).
 
 function stopAndGo(href?: string) {
     return (e: React.MouseEvent) => {
@@ -482,8 +485,10 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
     const platformConfig = PLATFORM_REGISTRY[platform] || PLATFORM_REGISTRY.generic
     const displayTitle = title || platformConfig.name
     const displaySubtitle = subtitle
-    const faceColor = customColor || PLATFORM_BACKGROUNDS[platform] || '#ffffff'
+    // Card chrome (outer padding) — white like the reference
+    const shellColor = '#ffffff'
     const panelColor = menuBg || '#fbb9b6'
+    const mediaFallback = customColor || PLATFORM_BACKGROUNDS[platform] || '#f5f5f5'
     const iconTarget = iconUrl || url
 
     const defaultAction = PLATFORM_ACTIONS[platform]
@@ -494,112 +499,129 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
     const layout = getSizeLayout(size)
     const isBar = size === 'bar'
 
-    // Shorter pink bar at rest; expands on hover
-    const panelTop = (() => {
-        if (isBar) return hovered ? '0%' : '18%'
-        if (size === '1x1') return hovered ? '38%' : '78%'
-        if (size === '2x2') return hovered ? '24%' : '78%'
-        return hovered ? '32%' : '76%'
-    })()
+    // Reference: rest top≈80% (thin bar), hover top≈20% (full panel)
+    const panelTop = isBar
+        ? (hovered ? '0%' : '22%')
+        : (hovered ? '20%' : '78%')
+
+    // Avatar size scales with card
+    const avatarSize = size === '2x2' ? 112 : size === '1x1' ? 72 : 88
+    const avatarBorder = size === '2x2' ? 8 : 6
 
     const media = backgroundImage || null
 
     return (
         <BentoCard
             size={size}
-            backgroundColor={faceColor}
+            backgroundColor={shellColor}
             disableHover
-            style={{ position: 'relative', overflow: 'hidden' }}
+            style={{ position: 'relative', overflow: 'hidden', padding: 3 }}
             onClick={isEditing ? onClick : undefined}
         >
             <div
-                className="group relative h-full w-full"
+                className="relative h-full w-full"
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
+                style={{ borderRadius: isBar ? 14 : 26 }}
             >
-                {/* Media / face */}
+                {/* Media — full card at rest, circle avatar top-left on hover */}
                 <div
-                    className="absolute inset-0"
-                    style={{ borderRadius: 'inherit' }}
+                    className="absolute overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                    style={{
+                        zIndex: hovered ? 3 : 1,
+                        top: hovered ? 10 : 0,
+                        left: hovered ? 10 : 0,
+                        width: hovered ? avatarSize : '100%',
+                        height: hovered ? avatarSize : '100%',
+                        borderRadius: hovered ? '50%' : (isBar ? 14 : 26),
+                        border: hovered ? `${avatarBorder}px solid ${panelColor}` : `0px solid ${panelColor}`,
+                        boxShadow: hovered ? '0 5px 5px rgba(96,75,74,0.19)' : 'none',
+                    }}
                 >
                     {media ? (
                         <img
                             src={media}
                             alt=""
                             draggable={false}
-                            className="h-full w-full object-cover transition-transform duration-500"
-                            style={{ transform: hovered ? 'scale(1.08)' : 'scale(1)' }}
+                            className="h-full w-full object-cover"
                         />
                     ) : (
-                        <>
-                            <div className="absolute inset-0" style={{ background: faceColor }} />
-                            <div
-                                className="absolute inset-0 transition-opacity duration-500"
-                                style={{
-                                    opacity: hovered ? 1 : 0,
-                                    background: `linear-gradient(160deg, ${faceColor} 0%, ${panelColor} 140%)`,
-                                }}
-                            />
-                        </>
-                    )}
-                </div>
-
-                {/* Title / subtitle */}
-                <div className="absolute left-0 right-0 top-0 z-[1] px-5 pt-5">
-                    <div
-                        className="font-medium"
-                        style={{
-                            fontFamily: 'Inter, sans-serif',
-                            fontSize: layout.fontSize,
-                            lineHeight: layout.fontSize === 18 ? '22px' : '18px',
-                            letterSpacing: layout.fontSize === 18 ? '-0.02em' : '-0.01em',
-                            color: media ? '#fff' : '#1a1a1a',
-                            display: '-webkit-box',
-                            WebkitLineClamp: layout.lineClamp,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            whiteSpace: 'pre-wrap',
-                            textShadow: media ? '0 1px 8px rgba(0,0,0,0.35)' : undefined,
-                        }}
-                    >
-                        {displayTitle}
-                    </div>
-                    {displaySubtitle && (
                         <div
-                            className="mt-1"
-                            style={{
-                                fontFamily: 'Inter, sans-serif',
-                                fontSize: layout.subtitleFontSize || 12,
-                                lineHeight: layout.subtitleFontSize === 14 ? '18px' : '16px',
-                                color: media ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.55)',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                textShadow: media ? '0 1px 6px rgba(0,0,0,0.3)' : undefined,
-                            }}
-                        >
-                            {displaySubtitle}
-                        </div>
+                            className="h-full w-full"
+                            style={{ background: mediaFallback }}
+                        />
                     )}
                 </div>
 
-                {/* Bottom panel */}
+                {/* Bottom pink panel — expands on hover; holds title/subtitle + actions */}
                 <div
-                    className="absolute bottom-0 left-0 right-0 z-[2] overflow-hidden transition-[top,border-radius] duration-500 ease-[cubic-bezier(0.645,0.045,0.355,1)]"
+                    className="absolute bottom-0 left-0 right-0 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.645,0.045,0.355,1)]"
                     style={{
+                        zIndex: 2,
                         top: panelTop,
                         background: panelColor,
-                        borderRadius: isBar ? 16 : hovered ? '28px 20px 27px 27px' : '20px 20px 27px 27px',
-                        boxShadow: 'inset 0 5px 5px rgba(0,0,0,0.08)',
+                        borderRadius: hovered
+                            ? (isBar ? 14 : '48px 20px 26px 26px')
+                            : (isBar ? 14 : '20px 20px 26px 26px'),
+                        boxShadow: 'inset 0 5px 5px rgba(96,75,74,0.12)',
                     }}
                 >
+                    {/* Title / subtitle — clipped when bar is short, visible when expanded */}
+                    <div
+                        className="absolute left-5 right-5"
+                        style={{
+                            top: isBar ? 12 : '18%',
+                            opacity: hovered ? 1 : 0,
+                            transform: hovered ? 'translateY(0)' : 'translateY(8px)',
+                            transition: 'opacity .35s ease .08s, transform .35s ease .08s',
+                            pointerEvents: 'none',
+                        }}
+                    >
+                        <div
+                            className="font-semibold"
+                            style={{
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: layout.fontSize === 18 ? 20 : 16,
+                                lineHeight: layout.fontSize === 18 ? '24px' : '20px',
+                                color: '#ffffff',
+                                letterSpacing: '-0.02em',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                whiteSpace: 'pre-wrap',
+                            }}
+                        >
+                            {displayTitle}
+                        </div>
+                        {displaySubtitle && (
+                            <div
+                                className="mt-2"
+                                style={{
+                                    fontFamily: 'Inter, sans-serif',
+                                    fontSize: layout.subtitleFontSize === 14 ? 14 : 13,
+                                    lineHeight: '1.35',
+                                    color: 'rgba(255,255,255,0.92)',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'pre-wrap',
+                                }}
+                            >
+                                {displaySubtitle}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Bottom row: icon left, CTA right — always pinned to panel bottom */}
                     <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3 sm:px-5 sm:pb-4">
                         <a
                             href={isEditing ? undefined : iconTarget}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={stopAndGo(isEditing ? undefined : iconTarget)}
-                            className="flex size-9 items-center justify-center rounded-full bg-white/20 transition hover:scale-110 hover:bg-white/35"
+                            className="flex size-9 items-center justify-center transition hover:scale-110"
                             style={{ pointerEvents: isEditing ? 'none' : 'auto' }}
                             aria-label={platformConfig.name}
                         >
