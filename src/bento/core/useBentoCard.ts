@@ -74,7 +74,6 @@ export const useBentoCard = (options: UseBentoCardOptions): UseBentoCardReturn =
         size: initialSize = '1x1',
         initialPosition = { x: 0, y: 0 },
         draggable = false,
-        resizable = false,
         selectable = true,
         onDragStart,
         onDragEnd,
@@ -90,7 +89,6 @@ export const useBentoCard = (options: UseBentoCardOptions): UseBentoCardReturn =
     const [isHovered, setIsHovered] = useState(false)
     const [isSelected, setIsSelected] = useState(false)
     const [isDragging, setIsDragging] = useState(false)
-    const [isResizing, setIsResizing] = useState(false)
 
     // Refs
     const cardRef = useRef<HTMLDivElement>(null)
@@ -223,7 +221,7 @@ export const useBentoCard = (options: UseBentoCardOptions): UseBentoCardReturn =
         isHovered,
         isSelected,
         isDragging,
-        isResizing,
+        isResizing: false,
 
         // Refs
         cardRef,

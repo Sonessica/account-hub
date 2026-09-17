@@ -6,7 +6,6 @@
 
 import React, { forwardRef, useMemo } from 'react'
 import type { BentoCellProps } from './BentoGrid.types'
-import { useGridContext } from './BentoGrid'
 import { parseBentoSize, getBentoSize } from '../core/BentoSizeMap'
 import { cn } from '../../design-system/utils/cn'
 
@@ -25,8 +24,6 @@ export const BentoCell = forwardRef<HTMLDivElement, BentoCellProps>((props, ref)
         className,
     } = props
 
-    const gridContext = useGridContext()
-
     // Calculate span from size if not explicitly provided
     const { cols, rows } = useMemo(() => {
         if (colSpan !== undefined && rowSpan !== undefined) {
@@ -36,7 +33,6 @@ export const BentoCell = forwardRef<HTMLDivElement, BentoCellProps>((props, ref)
     }, [size, colSpan, rowSpan])
 
     // Get size config for dimensions
-    const sizeConfig = useMemo(() => getBentoSize(size), [size])
 
     // Cell styles
     const cellStyles: React.CSSProperties = useMemo(() => {
@@ -157,8 +153,6 @@ export const CellPlaceholder: React.FC<CellPlaceholderProps> = ({
     label,
     dashed = true,
 }) => {
-    const sizeConfig = getBentoSize(size)
-
     return (
         <BentoCell size={size}>
             <div

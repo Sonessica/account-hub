@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { cn } from '@/design-system/utils/cn'
 
 // ============ Types ============
@@ -152,9 +152,6 @@ type EmojiCategory = keyof typeof EMOJI_CATEGORIES
 // Fixed picker dimensions
 const PICKER_WIDTH = 360
 const PICKER_HEIGHT = 400 // Fixed height: 48px (categories) + 352px (emoji grid)
-const EMOJI_ROWS = 6 // Fixed number of rows
-const EMOJI_COLS = 8 // Fixed number of columns
-const MAX_EMOJIS_DISPLAY = EMOJI_ROWS * EMOJI_COLS // 48 emojis max
 
 // ============ Component ============
 
@@ -174,7 +171,7 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({ rect, onSelect, onClos
                     // Update recent category (cast to mutable array)
                     ;(EMOJI_CATEGORIES.recent as unknown as { emojis: string[] }).emojis = parsed
                 }
-            } catch (e) {
+            } catch {
                 // Ignore parse errors
             }
         }

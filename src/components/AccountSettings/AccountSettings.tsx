@@ -16,7 +16,6 @@ import { useUserStore } from '@/stores'
 import { Input } from '@/design-system/patterns'
 import { validateEmail, validatePassword, validateUsername } from '@/lib/validators'
 import { radii } from '@/design-system/tokens/radii'
-import { shadows } from '@/design-system/tokens/shadows'
 import { cn } from '@/design-system/utils/cn'
 
 // ============ Types ============
@@ -137,7 +136,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ triggerRef, is
         return () => {
             document.removeEventListener('mousedown', handleClickOutside)
         }
-    }, [isOpen, activeEdit, onClose])
+    }, [isOpen, activeEdit, onClose, triggerRef])
 
     // ESC key to close
     useEffect(() => {
@@ -364,7 +363,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ triggerRef, is
                     padding: '12px',
                     cursor: 'pointer',
                     borderRadius: '10px',
-                    backgroundColor: isHovered ? '#F7F7F7' : 'transparent',
+                    backgroundColor: isHovered ? (isDanger ? '#FEF2F2' : '#F7F7F7') : 'transparent',
                     transition: 'background-color 0.2s',
                     width: '100%',
                     display: 'flex',
@@ -379,7 +378,7 @@ export const AccountSettings: React.FC<AccountSettingsProps> = ({ triggerRef, is
                         fontWeight: 400,
                         fontFamily: 'Inter, sans-serif',
                         lineHeight: '16px',
-                        color: '#000000',
+                        color: isDanger ? '#DC2626' : '#000000',
                     }}
                 >
                     {text}

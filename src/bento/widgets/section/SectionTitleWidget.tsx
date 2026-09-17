@@ -35,8 +35,6 @@ export const SectionTitleWidget: React.FC<WidgetProps<SectionTitleConfig>> = ({
     onClick,
     onConfigChange,
 }) => {
-    if (!config) return null
-
     const { title, size = 'bar' } = config
     const { width, height } = getWidgetDimensions(size)
     const [isFocused, setIsFocused] = React.useState(false)

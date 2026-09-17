@@ -214,7 +214,7 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
             <p className="mb-4 text-sm text-gray-600">NAS 数据库还是空的，发现当前浏览器有旧卡片。是否一次性导入？</p>
             <button className="w-full rounded-xl bg-black p-3 text-white" onClick={() => { if (draft) void saveInitial(draft) }}>导入本地卡片</button>
             <button className="mt-3 w-full rounded-xl border p-3" onClick={() => void saveInitial({
-              widgets: [], profile: defaultProfile,
+              widgets: [], profile: defaultProfile, siteSettings: DEFAULT_SITE_SETTINGS,
             })}>从空白开始（旧卡片仍留在此浏览器）</button>
             {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
           </div>

@@ -425,28 +425,6 @@ const PLATFORM_BACKGROUNDS: Record<string, string> = {
     generic: '#ffffff',
 }
 
-const PLATFORM_ICON_BACKGROUNDS: Record<string, string> = {
-    instagram: 'transparent', // SVG includes background
-    twitter: '#55ACEE',      // Logo is white on blue, but our SVG might include blue? Checked twitter.svg
-    tiktok: '#ffffff',
-    youtube: 'transparent',   // SVG includes background
-    spotify: '#1DB954',
-    github: 'transparent',    // SVG includes background
-    linkedin: 'transparent',  // SVG includes background
-    discord: 'transparent',   // SVG includes background
-    twitch: 'transparent',
-    behance: 'transparent',
-    dribbble: 'transparent',
-    pinterest: 'transparent',
-    reddit: 'transparent',
-    whatsapp: 'transparent',
-    medium: 'transparent',
-    patreon: 'transparent',
-    buymeacoffee: 'transparent',
-    generic: '#6B7280',
-}
-
-
 // ============ Link Widget Component (uiverse cowardly-newt style) ============
 // Rest: white/empty face + thin pink bottom bar (icon | CTA)
 // Hover: pink panel expands up; media shrinks to top-left circle avatar;
@@ -486,7 +464,6 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
     const displayTitle = title || platformConfig.name
     const displaySubtitle = subtitle
     // Card chrome (outer padding) — white like the reference
-    const shellColor = '#ffffff'
     const panelColor = menuBg || '#fbb9b6'
     const mediaFallback = customColor || PLATFORM_BACKGROUNDS[platform] || '#f5f5f5'
     const iconTarget = iconUrl || url
@@ -496,7 +473,6 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
         ? { ...defaultAction, label: ctaLabel }
         : defaultAction
     const ctaText = action?.label || platformConfig.ctaLabel || 'Visit'
-    const layout = getSizeLayout(size)
     const isBar = size === 'bar'
 
     // Per-size metrics (px) so every card size looks consistent

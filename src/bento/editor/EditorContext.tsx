@@ -102,17 +102,18 @@ const LAYOUT_PROPERTIES = ['size'] as const
 
 // Check if a property is a content property
 const isContentProperty = (key: string): boolean => {
-    return CONTENT_PROPERTIES.includes(key as any)
+    return (CONTENT_PROPERTIES as readonly string[]).includes(key)
 }
 
 // Check if a property is a layout property
 const isLayoutProperty = (key: string): boolean => {
-    return LAYOUT_PROPERTIES.includes(key as any)
+    return (LAYOUT_PROPERTIES as readonly string[]).includes(key)
 }
 
 // Extract content properties from widget (excluding layout properties)
 const extractContentProperties = (widget: WidgetConfig): Omit<WidgetConfig, 'size'> & { size?: WidgetSize } => {
     const { size, ...rest } = widget
+    void size
     return rest as Omit<WidgetConfig, 'size'> & { size?: WidgetSize }
 }
 
@@ -173,8 +174,8 @@ export const EditorProvider: React.FC<{
                     const contentProps = extractContentProperties(mobileWidget)
                     // Only update if content differs
                     const hasContentDiff = Object.keys(contentProps).some(key => {
-                        const desktopValue = (desktopWidget as any)[key]
-                        const mobileValue = (contentProps as any)[key]
+                        const desktopValue = (desktopWidget as unknown as Record<string, unknown>)[key]
+                        const mobileValue = (contentProps as Record<string, unknown>)[key]
                         return JSON.stringify(desktopValue) !== JSON.stringify(mobileValue)
                     })
                     if (hasContentDiff) {
@@ -193,8 +194,8 @@ export const EditorProvider: React.FC<{
                     const contentProps = extractContentProperties(desktopWidget)
                     // Only update if content differs
                     const hasContentDiff = Object.keys(contentProps).some(key => {
-                        const mobileValue = (mobileWidget as any)[key]
-                        const desktopValue = (contentProps as any)[key]
+                        const mobileValue = (mobileWidget as unknown as Record<string, unknown>)[key]
+                        const desktopValue = (contentProps as Record<string, unknown>)[key]
                         return JSON.stringify(mobileValue) !== JSON.stringify(desktopValue)
                     })
                     if (hasContentDiff) {
@@ -619,16 +620,14 @@ export const EditorProvider: React.FC<{
     const updateWidget = useCallback((id: string, updates: Partial<WidgetConfig>) => {
         // Separate content and layout updates
         const contentUpdates: Partial<WidgetConfig> = {}
-        const layoutUpdates: Partial<WidgetConfig> = {}
         let hasLayoutUpdates = false
 
         Object.keys(updates).forEach((key) => {
-            const value = (updates as any)[key]
+            const value = (updates as Record<string, unknown>)[key]
             if (isLayoutProperty(key)) {
-                ;(layoutUpdates as any)[key] = value
                 hasLayoutUpdates = true
             } else if (isContentProperty(key) || key === 'id' || key === 'category') {
-                ;(contentUpdates as any)[key] = value
+                ;(contentUpdates as Record<string, unknown>)[key] = value
             }
         })
 

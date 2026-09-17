@@ -7,7 +7,6 @@
 
 import { socialColors } from '../../tokens/colors'
 import { radii } from '../../tokens/radii'
-import { shadows } from '../../tokens/shadows'
 import { transitions } from '../../tokens/transitions'
 import type { ButtonVariant, ButtonSize, ButtonShape } from './Button.types'
 

@@ -28,7 +28,7 @@ export function useDeviceDetection(): boolean {
             }
             
             // Check user agent as fallback
-            const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera
+            const userAgent = navigator.userAgent || navigator.vendor
             const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i
             setIsMobile(mobileRegex.test(userAgent.toLowerCase()))
         }

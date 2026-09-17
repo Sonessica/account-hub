@@ -11,21 +11,15 @@ import {
     LinkWidget,
     TextWidget,
     MapWidget,
-    ImageWidget,
-    SectionTitleWidget,
     createLinkWidgetConfig,
     createTextWidgetConfig,
     createMapWidgetConfig,
-    createImageWidgetConfig,
-    createSectionTitleConfig,
     SIZE_VARIANTS,
 } from '@/bento/widgets'
 import { Text } from '@/design-system/primitives/Text/Text'
 import { BENTO_GAP } from '@/bento/core'
 
 // ============ Demo Data ============
-
-const sampleImage = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop'
 
 // ============ Main Page ============
 

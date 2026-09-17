@@ -5,7 +5,7 @@
  * Pan freely in four directions; cards snap to grid cells.
  */
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useMotionValue, useSpring } from 'framer-motion'
 import { BENTO_GAP, BENTO_UNIT } from '@/bento/core/BentoSizeMap'
 import { WidgetRenderer } from '@/bento/widgets'
@@ -24,6 +24,7 @@ function sizeToSpan(size: WidgetSize) {
 }
 
 function widgetPixelSize(size: WidgetSize) {
+    if (size === 'bar') return { width: 390, height: 68 }
     const { cols, rows } = sizeToSpan(size)
     return {
         width: cols * BENTO_UNIT + (cols - 1) * BENTO_GAP,
@@ -42,61 +43,78 @@ function searchCells(): Set<string> {
     return s
 }
 
-/** Assign missing x,y in a spiral-ish grid around origin, skipping search footprint */
+function* spiralCells(): Generator<{ x: number; y: number }> {
+    yield { x: 0, y: 0 }
+    for (let ring = 1; ; ring++) {
+        for (let x = -ring; x <= ring; x++) yield { x, y: -ring }
+        for (let y = -ring + 1; y <= ring; y++) yield { x: ring, y }
+        for (let x = ring - 1; x >= -ring; x--) yield { x, y: ring }
+        for (let y = ring - 1; y > -ring; y--) yield { x: -ring, y }
+    }
+}
+
+function blockIsFree(occupied: Set<string>, x: number, y: number, size: WidgetSize) {
+    const { cols, rows } = sizeToSpan(size)
+    for (let dx = 0; dx < cols; dx++) {
+        for (let dy = 0; dy < rows; dy++) {
+            if (occupied.has(`${x + dx},${y + dy}`)) return false
+        }
+    }
+    return true
+}
+
+function reserveBlock(occupied: Set<string>, x: number, y: number, size: WidgetSize) {
+    const { cols, rows } = sizeToSpan(size)
+    for (let dx = 0; dx < cols; dx++) {
+        for (let dy = 0; dy < rows; dy++) occupied.add(`${x + dx},${y + dy}`)
+    }
+}
+
+/** Snap a dragged card to the nearest free block, including the search footprint. */
+export function findFreeDropPosition(widgets: WidgetConfig[], id: string, x: number, y: number) {
+    const occupied = searchCells()
+    const moving = widgets.find((widget) => widget.id === id)
+    if (!moving) return { x, y }
+    for (const widget of widgets) {
+        if (widget.id !== id && typeof widget.x === 'number' && typeof widget.y === 'number') {
+            reserveBlock(occupied, widget.x, widget.y, widget.size)
+        }
+    }
+    for (const offset of spiralCells()) {
+        const targetX = x + offset.x
+        const targetY = y + offset.y
+        if (blockIsFree(occupied, targetX, targetY, moving.size)) return { x: targetX, y: targetY }
+    }
+    return { x, y }
+}
+
+/** Assign missing positions and repair cards already hidden by another card or search. */
 export function assignCanvasPositions(widgets: WidgetConfig[]): WidgetConfig[] {
     const occupied = searchCells()
     const out: WidgetConfig[] = []
-    // Build candidate cells: rings around origin
-    const cells: { x: number; y: number }[] = []
-    const maxRing = 40
-    for (let ring = 0; ring <= maxRing; ring++) {
-        for (let x = -ring; x <= ring; x++) {
-            for (let y = -ring; y <= ring; y++) {
-                if (Math.max(Math.abs(x), Math.abs(y)) !== ring) continue
-                cells.push({ x, y })
-            }
+    const candidates = spiralCells()
+    const fixed = new Set<number>()
+    // Existing valid positions take priority over unpositioned cards.
+    for (const [index, w] of widgets.entries()) {
+        if (typeof w.x === 'number' && typeof w.y === 'number' &&
+            blockIsFree(occupied, w.x, w.y, w.size)) {
+            reserveBlock(occupied, w.x, w.y, w.size)
+            fixed.add(index)
         }
     }
-
-    let ci = 0
-    for (const w of widgets) {
-        if (typeof w.x === 'number' && typeof w.y === 'number') {
-            const span = sizeToSpan(w.size)
-            for (let dx = 0; dx < span.cols; dx++) {
-                for (let dy = 0; dy < span.rows; dy++) {
-                    occupied.add(`${w.x + dx},${w.y + dy}`)
-                }
-            }
+    for (const [index, w] of widgets.entries()) {
+        if (fixed.has(index)) {
             out.push(w)
             continue
         }
-        // find next free cell for 1x1; larger widgets need free block
-        const span = sizeToSpan(w.size)
-        let placed: { x: number; y: number } | null = null
-        while (ci < cells.length) {
-            const c = cells[ci++]
-            let free = true
-            for (let dx = 0; dx < span.cols && free; dx++) {
-                for (let dy = 0; dy < span.rows; dy++) {
-                    if (occupied.has(`${c.x + dx},${c.y + dy}`)) {
-                        free = false
-                        break
-                    }
-                }
-            }
-            if (free) {
-                placed = c
-                for (let dx = 0; dx < span.cols; dx++) {
-                    for (let dy = 0; dy < span.rows; dy++) {
-                        occupied.add(`${c.x + dx},${c.y + dy}`)
-                    }
-                }
+        let placed: { x: number; y: number }
+        while (true) {
+            const candidate = candidates.next().value!
+            if (blockIsFree(occupied, candidate.x, candidate.y, w.size)) {
+                placed = candidate
+                reserveBlock(occupied, candidate.x, candidate.y, w.size)
                 break
             }
-        }
-        if (!placed) {
-            // overflow far bottom
-            placed = { x: out.length % 20 - 10, y: 30 + Math.floor(out.length / 20) }
         }
         out.push({ ...w, x: placed.x, y: placed.y })
     }
@@ -115,7 +133,6 @@ function matchesQuery(w: WidgetConfig, q: string) {
 type CanvasProps = {
     widgets: WidgetConfig[]
     isEditing: boolean
-    onWidgetsChange: (widgets: WidgetConfig[]) => void
     onUpdateWidget: (id: string, updates: Partial<WidgetConfig>) => void
     onRemoveWidget: (id: string) => void
     onSelect: (id: string | null) => void
@@ -127,7 +144,6 @@ type CanvasProps = {
 export function InfiniteCanvas({
     widgets,
     isEditing,
-    onWidgetsChange,
     onUpdateWidget,
     onRemoveWidget,
     onSelect,
@@ -137,6 +153,7 @@ export function InfiniteCanvas({
 }: CanvasProps) {
     const viewportRef = useRef<HTMLDivElement>(null)
     const [pan, setPan] = useState({ x: 0, y: 0 })
+    const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
     const [query, setQuery] = useState('')
     const [draggingId, setDraggingId] = useState<string | null>(null)
     const panDrag = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null)
@@ -169,6 +186,29 @@ export function InfiniteCanvas({
         })
         centeredOnce.current = true
     }, [])
+
+    useEffect(() => {
+        const el = viewportRef.current
+        if (!el) return
+        const observer = new ResizeObserver(([entry]) => {
+            setViewportSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+        })
+        observer.observe(el)
+        return () => observer.disconnect()
+    }, [])
+
+    const visibleWidgets = useMemo(() => {
+        if (!viewportSize.width || !viewportSize.height) return []
+        const overscan = STEP * 2
+        return widgets.filter((w) => {
+            if (w.id === selectedWidgetId || w.id === draggingId || w.id === editingWidgetId) return true
+            const x = (typeof w.x === 'number' ? w.x : 0) * STEP + pan.x
+            const y = (typeof w.y === 'number' ? w.y : 0) * STEP + pan.y
+            const size = widgetPixelSize(w.size)
+            return x + size.width >= -overscan && x <= viewportSize.width + overscan &&
+                y + size.height >= -overscan && y <= viewportSize.height + overscan
+        })
+    }, [widgets, selectedWidgetId, draggingId, editingWidgetId, pan, viewportSize])
 
     const onViewportPointerDown = (e: React.PointerEvent) => {
         if ((e.target as HTMLElement).closest('[data-canvas-card]')) return
@@ -207,7 +247,7 @@ export function InfiniteCanvas({
             const dy = dragY.get()
             const cellX = Math.round((c.origX * STEP + dx) / STEP)
             const cellY = Math.round((c.origY * STEP + dy) / STEP)
-            onUpdateWidget(c.id, { x: cellX, y: cellY })
+            onUpdateWidget(c.id, findFreeDropPosition(widgets, c.id, cellX, cellY))
         }
         panDrag.current = null
         cardDrag.current = null
@@ -217,15 +257,12 @@ export function InfiniteCanvas({
     }
 
     const startCardDrag = (e: React.PointerEvent, w: WidgetConfig) => {
-        if (!isEditing) return
-        e.stopPropagation()
+        if (!isEditing || e.button !== 0 || (e.target as HTMLElement).closest('button, input, textarea, select, [data-widget-overlay]')) return
         const x = typeof w.x === 'number' ? w.x : 0
         const y = typeof w.y === 'number' ? w.y : 0
         cardDrag.current = { id: w.id, startX: e.clientX, startY: e.clientY, origX: x, origY: y, moved: false }
         dragX.set(0)
         dragY.set(0)
-        // Capture so pointerup always hits the viewport handler
-        ;(viewportRef.current as HTMLElement)?.setPointerCapture(e.pointerId)
         onSelect(w.id)
     }
 
@@ -237,9 +274,9 @@ export function InfiniteCanvas({
             className="relative h-[calc(100vh-4rem)] w-full cursor-grab overflow-hidden bg-[#F5F5F7] active:cursor-grabbing"
             style={{ touchAction: 'none' }}
             onPointerDown={onViewportPointerDown}
-            onPointerMove={onViewportPointerMove}
-            onPointerUp={onViewportPointerUp}
-            onPointerCancel={onViewportPointerUp}
+            onPointerMoveCapture={onViewportPointerMove}
+            onPointerUpCapture={onViewportPointerUp}
+            onPointerCancelCapture={onViewportPointerUp}
         >
             <div
                 className="absolute left-0 top-0 will-change-transform"
@@ -266,7 +303,7 @@ export function InfiniteCanvas({
                     />
                 </div>
 
-                {widgets.map((w) => {
+                {visibleWidgets.map((w) => {
                     const x = typeof w.x === 'number' ? w.x : 0
                     const y = typeof w.y === 'number' ? w.y : 0
                     const px = widgetPixelSize(w.size)
@@ -275,7 +312,9 @@ export function InfiniteCanvas({
                     return (
                         <motion.div
                             key={w.id}
+                            id={`widget-${w.id}`}
                             data-canvas-card
+                            onDragStart={(e) => e.preventDefault()}
                             className="absolute"
                             initial={false}
                             animate={{
@@ -302,16 +341,14 @@ export function InfiniteCanvas({
                                     ? { x: smoothX, y: smoothY, position: 'absolute' }
                                     : { position: 'absolute' }
                             }
-                            onPointerDown={(e) => {
+                            onPointerDownCapture={(e) => {
                                 if (!isEditing) {
-                                    e.stopPropagation()
                                     return
                                 }
                                 startCardDrag(e, w)
                             }}
-                            onDoubleClick={(e) => {
-                                e.stopPropagation()
-                                if (isEditing) {
+                            onDoubleClickCapture={(e) => {
+                                if (isEditing && !(e.target as HTMLElement).closest('input, textarea, select, button')) {
                                     onSelect(w.id)
                                     onOpenEdit(w.id)
                                 }

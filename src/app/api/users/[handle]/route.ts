@@ -17,7 +17,7 @@ export async function GET(
 
     // Try to find user by handle first, then by username
     let profile = null
-    let query = supabase
+    const query = supabase
       .from('profiles')
       .select('*')
       .eq('handle', handle.toLowerCase())

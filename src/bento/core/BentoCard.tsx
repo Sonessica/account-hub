@@ -17,7 +17,6 @@ import {
     bentoSizes,
     bentoBorder,
     bentoCardBase,
-    bentoCardHover,
     bentoIconSizes,
     bentoPadding,
     bentoOverlayGradients,

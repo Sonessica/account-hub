@@ -253,6 +253,26 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({ rect, onSelect, 
         }
     }, [query])
 
+    // Handle result selection
+    const handleSelectResult = useCallback(async (result: LocationResult) => {
+        setIsLoading(true)
+        try {
+            const lat = result.geometry?.location.lat
+            const lng = result.geometry?.location.lng
+            const details = await locationSearchService.getPlaceDetails(
+                result.place_id, lat, lng, result.description
+            )
+            if (details) {
+                onSelect(details)
+                onClose()
+            }
+        } catch (error) {
+            console.error('Error getting place details:', error)
+        } finally {
+            setIsLoading(false)
+        }
+    }, [onSelect, onClose])
+
     // Handle keyboard navigation
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'ArrowDown') {
@@ -269,34 +289,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({ rect, onSelect, 
         } else if (e.key === 'Escape') {
             onClose()
         }
-    }, [results, selectedIndex, onClose])
-
-    // Handle result selection
-    const handleSelectResult = async (result: LocationResult) => {
-        setIsLoading(true)
-        try {
-            // Use coordinates from search result if available, otherwise fetch details
-            const lat = result.geometry?.location.lat
-            const lng = result.geometry?.location.lng
-            const label = result.description
-
-            const details = await locationSearchService.getPlaceDetails(
-                result.place_id,
-                lat,
-                lng,
-                label
-            )
-            
-            if (details) {
-                onSelect(details)
-                onClose()
-            }
-        } catch (error) {
-            console.error('Error getting place details:', error)
-        } finally {
-            setIsLoading(false)
-        }
-    }
+    }, [results, selectedIndex, onClose, handleSelectResult])
 
     // Close on outside click
     useEffect(() => {

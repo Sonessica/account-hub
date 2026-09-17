@@ -10,6 +10,7 @@ export type SiteSettings = {
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {}
 
-export function normalizeSiteSettings(_value?: unknown): SiteSettings {
+export function normalizeSiteSettings(value?: unknown): SiteSettings {
+  void value
   return {}
 }

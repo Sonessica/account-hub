@@ -27,7 +27,6 @@ import {
     createTextWidgetConfig,
     createMapWidgetConfig,
 } from '@/bento/widgets'
-import { cn } from '@/design-system/utils/cn'
 import type { WidgetConfig, WidgetSize } from '@/bento/widgets/types'
 
 // ============ Widget Dimensions Map ============
@@ -145,8 +144,6 @@ const EditorContent: React.FC = () => {
         updateWidget,
         addWidget,
         reorderWidgets,
-        desktopWidgets,
-        mobileWidgets,
     } = useEditor()
     const containerRef = useRef<HTMLDivElement>(null)
     const gridContainerRef = useRef<HTMLDivElement>(null)

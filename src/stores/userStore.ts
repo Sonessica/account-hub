@@ -33,7 +33,7 @@ interface UserState {
     logout: () => Promise<void>
     updateProfile: (updates: Partial<Pick<User, 'displayName' | 'avatar' | 'bio' | 'username' | 'email'>>) => Promise<void>
     clearError: () => void
-    refreshUser: () => Promise<void>
+    refreshUser: () => Promise<boolean>
 }
 
 // ============ Store ============
@@ -127,7 +127,7 @@ export const useUserStore = create<UserState>((set, get) => ({
 
             set({ user, isAuthenticated: true, isLoading: false, error: null })
             return true
-        } catch (error) {
+        } catch {
             set({ isLoading: false, error: '网络错误，请稍后重试' })
             return false
         }
@@ -256,6 +256,7 @@ export async function getUserByHandle(handle: string): Promise<User | null> {
 
 // Legacy function name for backward compatibility
 export function getUserByUsername(username: string): User | null {
+    void username
     // This is now async, but keeping sync signature for compatibility
     // Components should use getUserByHandle directly
     return null

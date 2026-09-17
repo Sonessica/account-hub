@@ -13,12 +13,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { 
     LinkSimple, 
-    Image, 
+    Image as PhosphorImage,
     TextT, 
     TextH,
     MapPin, 
-    GridFour,
-    Share
 } from 'phosphor-react'
 import { useEditor } from './EditorContext'
 import {
@@ -57,10 +55,6 @@ const DOPAMINE_COLORS = {
     viewSecondary: '#8B78E6',
 } as const
 
-const ShareIcon = () => (
-    <Share size={16} weight="fill" className="text-white" />
-)
-
 // Duotone icons with dopamine colors - direct implementation
 const LinkIcon = () => (
     <LinkSimple 
@@ -74,7 +68,7 @@ const LinkIcon = () => (
 )
 
 const ImageIcon = () => (
-    <Image 
+    <PhosphorImage
         size={16} 
         weight="duotone" 
         color={DOPAMINE_COLORS.imagePrimary}
@@ -102,17 +96,6 @@ const MapIcon = () => (
         color={DOPAMINE_COLORS.mapPrimary}
         style={{ 
             '--duotone-secondary': DOPAMINE_COLORS.mapSecondary 
-        } as React.CSSProperties}
-    />
-)
-
-const WidgetsIcon = () => (
-    <GridFour 
-        size={16} 
-        weight="duotone" 
-        color={DOPAMINE_COLORS.widgetsPrimary}
-        style={{ 
-            '--duotone-secondary': DOPAMINE_COLORS.widgetsSecondary 
         } as React.CSSProperties}
     />
 )
@@ -167,7 +150,7 @@ export const EditorToolbar: React.FC = () => {
         }
     }
 
-    const handleAddLinkWithMetadata = async (url: string) => {
+    const handleAddLinkWithMetadata = useCallback(async (url: string) => {
         // Normalize URL
         let normalizedUrl = url.trim()
         if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
@@ -206,7 +189,7 @@ export const EditorToolbar: React.FC = () => {
         addWidget(createLinkWidgetConfig(normalizedUrl, '1x1'))
         setShowLinkModal(false)
         setLinkUrl('')
-    }
+    }, [addWidget])
 
     const handleLinkModalClose = () => {
         setShowLinkModal(false)
@@ -247,11 +230,11 @@ export const EditorToolbar: React.FC = () => {
                 }, 300) // 300ms debounce - enough time for paste to complete
 
                 return () => clearTimeout(timer)
-            } catch (_) {
+            } catch {
                 // Invalid URL, do nothing
             }
         }
-    }, [linkUrl, showLinkModal, addWidget])
+    }, [linkUrl, showLinkModal, handleAddLinkWithMetadata])
 
     // Close modal on Escape key
     useEffect(() => {

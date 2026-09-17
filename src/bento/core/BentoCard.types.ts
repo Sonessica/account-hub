@@ -5,7 +5,7 @@
  * Bento-style card component type definitions
  */
 
-import type { HTMLAttributes, ReactNode, CSSProperties } from 'react'
+import type { HTMLAttributes, ReactNode } from 'react'
 
 // ============ Card Sizes ============
 

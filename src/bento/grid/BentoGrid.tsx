@@ -36,16 +36,10 @@ export const BentoGrid = forwardRef<HTMLDivElement, BentoGridProps>((props, ref)
         maxWidth,
         centered = true,
         showGridLines = false,
-        responsive = true,
         style,
         className,
         padding = 0,
     } = props
-
-    // Calculate grid dimensions
-    const gridWidth = useMemo(() => {
-        return columns * unit + (columns - 1) * gap
-    }, [columns, unit, gap])
 
     // Context value
     const contextValue: GridContextValue = useMemo(() => ({

@@ -17,7 +17,6 @@ import { Card } from '@/design-system/patterns/Card'
 import { Map, MapMarker, MarkerContent, useMap } from '@/components/ui/map'
 import type { MapWidgetConfig, WidgetProps } from '../types'
 
-const CARTO_LIGHT = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
 const CARTO_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
 const SATELLITE_STYLE: StyleSpecification = {
     version: 8,

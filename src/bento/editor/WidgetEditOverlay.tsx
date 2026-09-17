@@ -12,7 +12,7 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import type { WidgetConfig, WidgetSize, MapWidgetConfig } from '../widgets/types'
 import { SIZE_VARIANTS } from '../widgets/types'
 import { cn } from '@/design-system/utils/cn'
@@ -56,7 +56,6 @@ interface SizeIconProps {
 const SizeIcon: React.FC<SizeIconProps> = ({ size, isActive }) => {
     // Inactive: White (faded), Active: Black (sharp against white bg)
     const stroke = isActive ? 'black' : 'rgba(255,255,255,0.6)'
-    const fill = isActive ? 'rgba(255,255,255,0.15)' : 'none'
     const strokeWidth = 1.5
 
     // SVG viewBox is 24x24, shapes are positioned within

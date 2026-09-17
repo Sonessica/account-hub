@@ -14,7 +14,6 @@ import {
     Play, 
     Pause, 
     MusicNote,
-    type IconProps as PhosphorIconProps,
 } from 'phosphor-react'
 
 interface IconProps {
@@ -22,19 +21,6 @@ interface IconProps {
     color?: string
     className?: string
     weight?: 'thin' | 'light' | 'regular' | 'bold' | 'fill' | 'duotone'
-}
-
-// Map platform names to SVG file names in public/icons/social/
-const PLATFORM_ICON_MAP: Record<string, string> = {
-    twitter: 'twitter',
-    instagram: 'instagram',
-    tiktok: 'unknown', // No SVG available, fallback to unknown
-    linkedin: 'linkedin',
-    youtube: 'youtube',
-    spotify: 'unknown', // No SVG available, fallback to unknown
-    github: 'github',
-    whatsapp: 'whatsapp',
-    discord: 'discord',
 }
 
 // Create SVG icon component

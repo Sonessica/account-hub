@@ -4,7 +4,6 @@
  * 主题类型定义
  */
 
-import type { ColorToken } from '../../tokens/colors'
 
 // ============ 主题颜色配置 ============
 

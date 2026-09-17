@@ -8,7 +8,6 @@
  */
 
 import React, { useEffect, useState } from 'react'
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { BentoCard, BENTO_GAP } from '@/bento/core'
 import { ProfileSection } from '@/bento/editor'
@@ -19,31 +18,24 @@ import type { WidgetConfig, LinkWidgetConfig, ImageWidgetConfig, TextWidgetConfi
 // ============ Widget Renderer (Read-only) ============
 
 function WidgetRenderer({ widget }: { widget: WidgetConfig }) {
-    switch (widget.type) {
+    switch (widget.category) {
         case 'link': {
             const linkWidget = widget as LinkWidgetConfig
             return (
                 <BentoCard
                     size={widget.size}
-                    backgroundColor={widget.style?.backgroundColor || '#ffffff'}
+                    backgroundColor="#ffffff"
                     clickable
                     href={linkWidget.url}
                     target="_blank"
                 >
                     <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        {linkWidget.favicon && (
-                            <img
-                                src={linkWidget.favicon}
-                                alt=""
-                                style={{ width: 40, height: 40, borderRadius: 10, marginBottom: 12 }}
-                            />
-                        )}
                         <span style={{ fontSize: 14, fontWeight: 500, color: '#000' }}>
                             {linkWidget.title || linkWidget.url}
                         </span>
-                        {linkWidget.description && (
+                        {linkWidget.subtitle && (
                             <span style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                                {linkWidget.description}
+                                {linkWidget.subtitle}
                             </span>
                         )}
                     </div>
@@ -55,7 +47,7 @@ function WidgetRenderer({ widget }: { widget: WidgetConfig }) {
             const imageWidget = widget as ImageWidgetConfig
             return (
                 <BentoCard size={widget.size} clickable>
-                    <BentoCard.Image src={imageWidget.imageUrl} />
+                    <BentoCard.Image src={imageWidget.src} />
                     {imageWidget.title && (
                         <BentoCard.Overlay gradient="bottom">
                             <BentoCard.Title color="inverse">{imageWidget.title}</BentoCard.Title>
@@ -70,21 +62,21 @@ function WidgetRenderer({ widget }: { widget: WidgetConfig }) {
             return (
                 <BentoCard
                     size={widget.size}
-                    backgroundColor={widget.style?.backgroundColor || '#ffffff'}
+                    backgroundColor="#ffffff"
                 >
                     <div style={{
                         padding: 24,
                         height: '100%',
                         display: 'flex',
-                        alignItems: textWidget.alignment === 'center' ? 'center' : 'flex-start',
-                        justifyContent: textWidget.alignment === 'center' ? 'center' : 'flex-start',
+                        alignItems: 'flex-start',
+                        justifyContent: 'flex-start',
                     }}>
                         <span style={{
-                            fontSize: textWidget.fontSize === 'lg' ? 18 : textWidget.fontSize === 'xl' ? 24 : 14,
-                            fontWeight: textWidget.fontWeight === 'bold' ? 700 : 500,
-                            color: widget.style?.textColor || '#000',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            color: '#000',
                         }}>
-                            {textWidget.text}
+                            {textWidget.content}
                         </span>
                     </div>
                 </BentoCard>
@@ -96,7 +88,7 @@ function WidgetRenderer({ widget }: { widget: WidgetConfig }) {
             return (
                 <BentoCard
                     size={widget.size}
-                    backgroundImage={`https://api.mapbox.com/styles/v1/mapbox/light-v11/static/${mapWidget.longitude},${mapWidget.latitude},${mapWidget.zoom || 12},0/400x400?access_token=pk.placeholder`}
+                    backgroundColor="#e5e7eb"
                     clickable
                 >
                     <div style={{
@@ -112,7 +104,7 @@ function WidgetRenderer({ widget }: { widget: WidgetConfig }) {
                         boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
                     }} />
 
-                    {mapWidget.label && (
+                    {mapWidget.location?.label && (
                         <div style={{
                             position: 'absolute',
                             bottom: 20,
@@ -123,7 +115,7 @@ function WidgetRenderer({ widget }: { widget: WidgetConfig }) {
                             fontSize: 14,
                             fontWeight: 500,
                         }}>
-                            {mapWidget.label}
+                            {mapWidget.location.label}
                         </div>
                     )}
                 </BentoCard>
@@ -137,7 +129,7 @@ function WidgetRenderer({ widget }: { widget: WidgetConfig }) {
                     backgroundColor="#f0f0f0"
                 >
                     <div style={{ padding: 24, color: '#666' }}>
-                        {widget.type}
+                        {widget.category}
                     </div>
                 </BentoCard>
             )

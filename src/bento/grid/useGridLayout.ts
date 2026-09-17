@@ -135,7 +135,7 @@ export const useGridLayout = (options: UseGridLayoutOptions = {}): UseGridLayout
 
     // Find next available position
     const findNextAvailablePosition = useCallback((size: BentoSize): { col: number; row: number } | null => {
-        const { cols, rows } = parseBentoSize(size)
+        const { cols } = parseBentoSize(size)
 
         for (let row = 0; row < maxRows; row++) {
             for (let col = 0; col <= columns - cols; col++) {

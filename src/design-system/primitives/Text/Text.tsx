@@ -172,16 +172,12 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>((props, ref) => {
     // 合并用户样式
     Object.assign(combinedStyles, style)
 
-    return (
-        <Component
-            ref={ref}
-            className={cn('text', className)}
-            style={combinedStyles}
-            {...restProps}
-        >
-            {children}
-        </Component>
-    )
+    return React.createElement(Component, {
+        ref,
+        className: cn('text', className),
+        style: combinedStyles,
+        ...restProps,
+    }, children)
 })
 
 Text.displayName = 'Text'

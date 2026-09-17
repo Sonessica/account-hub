@@ -208,7 +208,7 @@ export function Dropdown(props: DropdownProps) {
     }
 
     // 触发器事件
-    const triggerProps: any = {
+    const triggerProps: React.HTMLAttributes<HTMLElement> & { ref: React.RefObject<HTMLElement | null>; 'aria-haspopup': 'menu'; 'aria-expanded': boolean } = {
         ref: triggerRef,
         'aria-haspopup': 'menu',
         'aria-expanded': isOpen,
@@ -219,7 +219,7 @@ export function Dropdown(props: DropdownProps) {
             if (disabled) return
             e.stopPropagation()
             setIsOpen(!isOpen)
-                ; (trigger as React.ReactElement<any>).props.onClick?.(e)
+                ; (trigger as React.ReactElement<React.HTMLAttributes<Element>>).props.onClick?.(e)
         }
     } else {
         triggerProps.onMouseEnter = () => !disabled && setIsOpen(true)
@@ -227,7 +227,7 @@ export function Dropdown(props: DropdownProps) {
     }
 
     const triggerElement = isValidElement(trigger)
-        ? cloneElement(trigger as React.ReactElement<any>, triggerProps)
+        ? cloneElement(trigger as React.ReactElement<React.HTMLAttributes<HTMLElement> & { ref?: React.Ref<HTMLElement> }>, triggerProps)
         : trigger
 
     // 菜单样式

@@ -66,9 +66,9 @@ export async function GET(request: Request) {
                 success: true,
                 ...metadata,
             })
-        } catch (error: any) {
+        } catch (error: unknown) {
             clearTimeout(timeoutId)
-            if (error.name === 'AbortError') {
+            if (error instanceof Error && error.name === 'AbortError') {
                 return NextResponse.json(
                     { error: 'Request timeout' },
                     { status: 408 }
@@ -76,10 +76,10 @@ export async function GET(request: Request) {
             }
             throw error
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Metadata fetch error:', error)
         return NextResponse.json(
-            { error: 'Failed to fetch metadata', details: error.message },
+            { error: 'Failed to fetch metadata', details: error instanceof Error ? error.message : String(error) },
             { status: 500 }
         )
     }

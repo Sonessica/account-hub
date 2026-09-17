@@ -10,6 +10,14 @@ import {
 } from './Button.styles'
 import type { ButtonProps } from './Button.types'
 
+function LoadingSpinner({ size }: { size: string }) {
+    return <svg className="button-spinner" width={size} height={size} viewBox="0 0 24 24" fill="none"
+        style={{ animation: 'spin 1s linear infinite' }}>
+        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" opacity={0.25} />
+        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray="31.4 31.4" strokeDashoffset="23.55" />
+    </svg>
+}
+
 /**
  * Button - 按钮组件
  * 
@@ -111,41 +119,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>((props, ref) =>
         onMouseLeave?.(e)
     }
 
-    // 加载指示器
-    const LoadingSpinner = () => (
-        <svg
-            className="button-spinner"
-            width={sizeConfig.iconSize}
-            height={sizeConfig.iconSize}
-            viewBox="0 0 24 24"
-            fill="none"
-            style={{
-                animation: 'spin 1s linear infinite',
-            }}
-        >
-            <circle
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray="31.4 31.4"
-                opacity={0.25}
-            />
-            <circle
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray="31.4 31.4"
-                strokeDashoffset="23.55"
-            />
-        </svg>
-    )
-
     // 徽章渲染 (如 TikTok 的粉丝数)
     const BadgeElement = badge !== undefined && (
         <span
@@ -171,7 +144,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>((props, ref) =>
     const content = (
         <>
             {loading ? (
-                <LoadingSpinner />
+                <LoadingSpinner size={sizeConfig.iconSize} />
             ) : (
                 <>
                     {leftIcon && (

@@ -12,7 +12,7 @@
 
 import React, { useRef, useState, useEffect } from 'react'
 import ReactDOM from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Upload, Trash } from 'phosphor-react'
 import { useClickOutside } from './hooks/useClickOutside'
 import { cn } from '@/design-system/utils/cn'
@@ -462,10 +462,8 @@ const AvatarEditOverlay: React.FC<AvatarEditOverlayProps> = ({ rect, onReplace, 
     // Calculate button positions on bottom of the circle
     // Circle center and radius
     const circleCenterX = rect.left + rect.width / 2
-    const circleCenterY = rect.top + rect.height / 2
     const circleRadius = rect.width / 2 // 80px for w-40 (160px)
     const buttonRadius = 17 // 34px / 2
-    const buttonSize = buttonRadius * 2 // 34px
     
     // Button center should be above the bottom edge of the circle
     // Move button up by button radius to position it above the circle

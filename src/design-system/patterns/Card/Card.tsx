@@ -1,4 +1,4 @@
-import React, { forwardRef, createContext, useContext, useState } from 'react'
+import React, { forwardRef, createContext, useState } from 'react'
 import { cn } from '../../utils/cn'
 import {
     cardBaseStyles,
@@ -26,7 +26,6 @@ interface CardContextValue {
 
 const CardContext = createContext<CardContextValue>({ variant: 'default' })
 
-const useCardContext = () => useContext(CardContext)
 
 // ============ Card Root ============
 
@@ -228,6 +227,7 @@ const CardContent = forwardRef<HTMLDivElement, CardContentProps>((props, ref) =>
 
     const combinedStyles: React.CSSProperties = {
         flex: 1,
+        padding: noPadding ? 0 : undefined,
         ...style,
     }
 

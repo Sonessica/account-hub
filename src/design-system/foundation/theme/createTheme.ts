@@ -4,7 +4,7 @@
  * 主题创建工厂函数
  */
 
-import type { ThemeConfig, ThemeColors } from './types'
+import type { ThemeConfig } from './types'
 import { lightTheme } from './themes/light'
 import { darkTheme } from './themes/dark'
 

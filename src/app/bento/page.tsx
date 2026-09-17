@@ -8,7 +8,7 @@
 
 import React from 'react'
 import { BentoCard, BENTO_GAP } from '@/bento/core'
-import { Button, InstagramGradientIcon, TwitterIcon, TikTokIcon, WhatsAppIcon, MapPinIcon, SpotifyIcon, YouTubeIcon } from '@/design-system/patterns'
+import { InstagramGradientIcon, TwitterIcon, TikTokIcon, WhatsAppIcon, SpotifyIcon, YouTubeIcon } from '@/design-system/patterns'
 import { ThemeProvider } from '@/design-system/foundation/theme'
 import { Text } from '@/design-system/primitives'
 

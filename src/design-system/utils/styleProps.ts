@@ -5,7 +5,6 @@
  */
 
 import { spacing } from '../tokens/spacing'
-import { colors } from '../tokens/colors'
 import type { CSSProperties } from 'react'
 
 // ============ 类型定义 ============

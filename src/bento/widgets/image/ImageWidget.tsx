@@ -14,7 +14,6 @@ import type { ImageWidgetConfig, WidgetProps } from '../types'
 
 export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     config,
-    onClick,
     isEditing = false,
 }) => {
     const { src, alt, title, subtitle, size } = config

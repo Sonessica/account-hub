@@ -35,7 +35,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
+    "typecheck": "tsc --noEmit",
     "start": "next start",
     "lint": "eslint",
     "migrate:images": "node scripts/migrate-embedded-images.mjs"

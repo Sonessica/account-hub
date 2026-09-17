@@ -17,6 +17,14 @@ const modalSizes: Record<ModalSize, string> = {
     full: 'calc(100vw - 48px)',
 }
 
+function CloseButton({ onClose }: { onClose: () => void }) {
+    return <button type="button" onClick={onClose} style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32,
+        padding: 0, background: 'transparent', border: 'none', borderRadius: radii.md,
+        cursor: 'pointer', color: 'var(--color-text-tertiary)', transition: transitions.fast,
+    }} aria-label="Close"><X size={20} weight="regular" /></button>
+}
+
 // ============ Modal Root ============
 
 /**
@@ -120,31 +128,6 @@ const ModalRoot = forwardRef<HTMLDivElement, ModalProps>((props, ref) => {
         flexShrink: 0,
     }
 
-    // 关闭按钮
-    const CloseButton = () => (
-        <button
-            type="button"
-            onClick={onClose}
-            style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 32,
-                height: 32,
-                padding: 0,
-                background: 'transparent',
-                border: 'none',
-                borderRadius: radii.md,
-                cursor: 'pointer',
-                color: 'var(--color-text-tertiary)',
-                transition: transitions.fast,
-            }}
-            aria-label="Close"
-        >
-            <X size={20} weight="regular" />
-        </button>
-    )
-
     const modalContent = (
         <div
             style={overlayStyles}
@@ -179,7 +162,7 @@ const ModalRoot = forwardRef<HTMLDivElement, ModalProps>((props, ref) => {
                             </h2>
                         )}
                         {!title && <div />}
-                        {showCloseButton && <CloseButton />}
+                        {showCloseButton && <CloseButton onClose={onClose} />}
                     </div>
                 )}
 

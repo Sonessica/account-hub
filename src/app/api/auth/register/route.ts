@@ -130,16 +130,16 @@ export async function POST(request: Request) {
         // Continue anyway - user is created, profile can be created later
       } else {
         // Create handle claim
-        await supabase
+        const { error: claimError } = await supabase
           .from('handle_claims')
           .insert({
             handle: handle,
             user_id: authData.user.id,
           })
-          .catch(err => console.error('Handle claim creation error:', err))
+        if (claimError) console.error('Handle claim creation error:', claimError)
 
         // Create initial layout
-        await supabase
+        const { error: layoutError } = await supabase
           .from('bento_layouts')
           .insert({
             user_id: authData.user.id,
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
             desktop_layout: null,
             mobile_layout: null,
           })
-          .catch(err => console.error('Layout creation error:', err))
+        if (layoutError) console.error('Layout creation error:', layoutError)
       }
     }
 

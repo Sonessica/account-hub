@@ -15,12 +15,6 @@ export default function ResetPasswordPage() {
   const [isValidating, setIsValidating] = useState(true)
   const [domLoaded, setDomLoaded] = useState(false)
 
-  useEffect(() => {
-    setDomLoaded(true)
-    // Check if we have a valid reset token
-    checkResetToken()
-  }, [])
-
   const checkResetToken = async () => {
     try {
       // Check if user has a valid session from the reset link
@@ -34,11 +28,17 @@ export default function ResetPasswordPage() {
       }
 
       setIsValidating(false)
-    } catch (error) {
+    } catch {
       setError('Failed to validate reset link')
       setIsValidating(false)
     }
   }
+
+  useEffect(() => {
+    setDomLoaded(true)
+    // Check if we have a valid reset token
+    void checkResetToken()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,7 +86,7 @@ export default function ResetPasswordPage() {
       setTimeout(() => {
         router.push('/auth/login')
       }, 2000)
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.')
       setIsLoading(false)
     }

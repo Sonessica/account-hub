@@ -35,8 +35,8 @@ export interface ModalProps {
     noPadding?: boolean
 }
 
-export interface ModalHeaderProps extends HTMLAttributes<HTMLDivElement> { }
-export interface ModalBodyProps extends HTMLAttributes<HTMLDivElement> { }
+export type ModalHeaderProps = HTMLAttributes<HTMLDivElement>
+export type ModalBodyProps = HTMLAttributes<HTMLDivElement>
 export interface ModalFooterProps extends HTMLAttributes<HTMLDivElement> {
     align?: 'start' | 'center' | 'end' | 'between'
 }

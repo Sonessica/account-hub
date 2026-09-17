@@ -2,11 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { validateEmail } from '@/lib/validators'
 
 export default function ForgotPasswordPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -48,7 +46,7 @@ export default function ForgotPasswordPage() {
 
       setSuccess(true)
       setIsLoading(false)
-    } catch (error) {
+    } catch {
       setError('Network error. Please try again.')
       setIsLoading(false)
     }

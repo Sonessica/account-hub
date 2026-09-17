@@ -1,7 +1,6 @@
 import React, { forwardRef, useState } from 'react'
 import { cn } from '../../utils/cn'
 import { radii } from '../../tokens/radii'
-import { colors } from '../../tokens/colors'
 import type { AvatarProps, AvatarSize, AvatarShape } from './Avatar.types'
 
 // ============ 尺寸配置 ============

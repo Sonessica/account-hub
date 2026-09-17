@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
-import { EditorToolbar, useEditor, EditorFooter, WidgetEditorPanel } from '@/bento/editor'
+import { EditorToolbar, useEditor, EditorFooter } from '@/bento/editor'
 import { SettingsModal } from '@/bento/editor/SettingsModal'
 import { InfiniteCanvas, assignCanvasPositions } from '@/bento/editor/InfiniteCanvas'
 import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
@@ -32,26 +32,12 @@ const EditorContent: React.FC = () => {
         reorderWidgets,
     } = useEditor()
     const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
-    const migrated = useRef(false)
-
-    // One-time position assignment for legacy widgets without x,y
+    // Repair legacy overlaps and position newly added cards before saving.
     useEffect(() => {
-        if (migrated.current) return
-        if (!widgets.length) {
-            migrated.current = true
-            return
-        }
-        if (widgets.some((w) => typeof w.x !== 'number' || typeof w.y !== 'number')) {
-            reorderWidgets(assignCanvasPositions(widgets))
-        }
-        migrated.current = true
-    }, [widgets, reorderWidgets])
-
-    // Place newly added widgets (no x,y) in a free cell
-    useEffect(() => {
-        if (!migrated.current) return
-        if (widgets.some((w) => typeof w.x !== 'number' || typeof w.y !== 'number')) {
-            reorderWidgets(assignCanvasPositions(widgets))
+        if (!widgets.length) return
+        const positioned = assignCanvasPositions(widgets)
+        if (positioned.some((widget, index) => widget.x !== widgets[index].x || widget.y !== widgets[index].y)) {
+            reorderWidgets(positioned)
         }
     }, [widgets, reorderWidgets])
 
@@ -59,7 +45,6 @@ const EditorContent: React.FC = () => {
         <InfiniteCanvas
             widgets={widgets}
             isEditing={isEditing}
-            onWidgetsChange={reorderWidgets}
             onUpdateWidget={updateWidget}
             onRemoveWidget={removeWidget}
             onSelect={setSelectedWidgetId}

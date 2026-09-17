@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect, cloneElement, isValidElement } from 'react'
+import React, { useState, useRef, useEffect, useCallback, cloneElement, isValidElement } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '../../utils/cn'
 import { radii } from '../../tokens/radii'
-import { shadows } from '../../tokens/shadows'
 import type { TooltipProps, TooltipPlacement } from './Tooltip.types'
 
 // ============ 位置计算 ============
@@ -103,14 +102,14 @@ export function Tooltip(props: TooltipProps) {
     const hideTimeoutRef = useRef<number | undefined>(undefined)
 
     // 计算位置
-    const updatePosition = () => {
+    const updatePosition = useCallback(() => {
         if (triggerRef.current && tooltipRef.current) {
             const triggerRect = triggerRef.current.getBoundingClientRect()
             const tooltipRect = tooltipRef.current.getBoundingClientRect()
             const newPosition = calculatePosition(triggerRect, tooltipRect, placement)
             setPosition(newPosition)
         }
-    }
+    }, [placement])
 
     useEffect(() => {
         if (isVisible) {
@@ -122,7 +121,7 @@ export function Tooltip(props: TooltipProps) {
             window.removeEventListener('scroll', updatePosition, true)
             window.removeEventListener('resize', updatePosition)
         }
-    }, [isVisible, placement])
+    }, [isVisible, updatePosition])
 
     // 显示
     const show = () => {
@@ -151,23 +150,23 @@ export function Tooltip(props: TooltipProps) {
 
     // 克隆子元素并添加事件
     const trigger = isValidElement(children)
-        ? cloneElement(children as React.ReactElement<any>, {
+        ? cloneElement(children as React.ReactElement<React.HTMLAttributes<HTMLElement> & { ref?: React.Ref<HTMLElement> }>, {
             ref: triggerRef,
             onMouseEnter: (e: React.MouseEvent) => {
                 show()
-                    ; (children as React.ReactElement<any>).props.onMouseEnter?.(e)
+                    ; (children as React.ReactElement<React.HTMLAttributes<Element>>).props.onMouseEnter?.(e)
             },
             onMouseLeave: (e: React.MouseEvent) => {
                 hide()
-                    ; (children as React.ReactElement<any>).props.onMouseLeave?.(e)
+                    ; (children as React.ReactElement<React.HTMLAttributes<Element>>).props.onMouseLeave?.(e)
             },
             onFocus: (e: React.FocusEvent) => {
                 show()
-                    ; (children as React.ReactElement<any>).props.onFocus?.(e)
+                    ; (children as React.ReactElement<React.HTMLAttributes<Element>>).props.onFocus?.(e)
             },
             onBlur: (e: React.FocusEvent) => {
                 hide()
-                    ; (children as React.ReactElement<any>).props.onBlur?.(e)
+                    ; (children as React.ReactElement<React.HTMLAttributes<Element>>).props.onBlur?.(e)
             },
         })
         : children

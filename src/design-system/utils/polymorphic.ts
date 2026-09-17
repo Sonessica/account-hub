@@ -39,7 +39,7 @@ export type PropsToOmit<C extends ElementType, P> = keyof (AsProp<C> & P)
  */
 export type PolymorphicComponentProps<
     C extends ElementType,
-    Props = {}
+    Props = Record<string, never>
 > = PropsWithChildren<Props & AsProp<C>> &
     Omit<ComponentPropsWithoutRef<C>, PropsToOmit<C, Props>>
 
@@ -53,5 +53,5 @@ export type PolymorphicRef<C extends ElementType> = ComponentPropsWithoutRef<C>[
  */
 export type PolymorphicComponentPropsWithRef<
     C extends ElementType,
-    Props = {}
+    Props = Record<string, never>
 > = PolymorphicComponentProps<C, Props> & { ref?: PolymorphicRef<C> }

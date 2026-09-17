@@ -19,7 +19,6 @@ import type { TextWidgetConfig, WidgetProps } from '../types'
 
 const QuoteWidget: React.FC<WidgetProps<TextWidgetConfig>> = ({
     config,
-    onClick,
     isEditing = false,
 }) => {
     const { content, attribution, size } = config
@@ -46,7 +45,7 @@ const QuoteWidget: React.FC<WidgetProps<TextWidgetConfig>> = ({
                         marginBottom: 16,
                     }}
                 >
-                    "
+                    &ldquo;
                 </div>
 
                 {/* 引用内容 */}

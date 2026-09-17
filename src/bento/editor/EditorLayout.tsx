@@ -14,7 +14,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Gear, Eye, Compass } from 'phosphor-react'
 import { ProfileSection, EditorToolbar, useEditor } from './index'
 import { AccountSettings } from '@/components/AccountSettings'
-import { MOBILE_BREAKPOINT, MIN_CANVAS_WIDTH, MIN_PROFILE_WIDTH, MOBILE_CONTAINER_MAX_WIDTH } from './constants'
+import { MIN_CANVAS_WIDTH, MIN_PROFILE_WIDTH, MOBILE_CONTAINER_MAX_WIDTH } from './constants'
 import { useDeviceDetection } from './hooks/useDeviceDetection'
 
 interface EditorLayoutProps {

@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useUserStore } from '@/stores'
-import { validateEmail, validatePassword } from '@/lib/validators'
+import { validateEmail } from '@/lib/validators'
 
 export default function LoginPage() {
-  const router = useRouter()
   const { login, error: authError, clearError, isLoading: authLoading } = useUserStore()
 
   const [formData, setFormData] = useState({
