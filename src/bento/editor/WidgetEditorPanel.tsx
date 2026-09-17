@@ -1,16 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-
 import type {
-    ImageWidgetConfig,
     LinkWidgetConfig,
     MapWidgetConfig,
     SectionTitleConfig,
     TextWidgetConfig,
     WidgetConfig,
 } from '../widgets/types'
-import { uploadImage } from '@/lib/client/upload-image'
+import { ImageEditorModal } from './ImageEditorModal'
 
 interface WidgetEditorPanelProps {
     widget: WidgetConfig
@@ -31,6 +28,16 @@ function OptionalText({ value, onChange, placeholder }: {
 }
 
 export function WidgetEditorPanel({ widget, onUpdate, onClose }: WidgetEditorPanelProps) {
+    if (widget.category === 'image') {
+        return (
+            <ImageEditorModal
+                widget={widget}
+                onUpdate={onUpdate}
+                onClose={onClose}
+            />
+        )
+    }
+
     return (
         <aside
             data-widget-editor
@@ -49,7 +56,6 @@ export function WidgetEditorPanel({ widget, onUpdate, onClose }: WidgetEditorPan
 
             <div className="grid gap-4">
                 {widget.category === 'link' && <LinkFields widget={widget} onUpdate={onUpdate} />}
-                {widget.category === 'image' && <ImageFields widget={widget} onUpdate={onUpdate} />}
                 {widget.category === 'text' && <TextFields widget={widget} onUpdate={onUpdate} />}
                 {widget.category === 'map' && <MapFields widget={widget} onUpdate={onUpdate} />}
                 {widget.category === 'section' && <SectionFields widget={widget} onUpdate={onUpdate} />}
@@ -81,51 +87,6 @@ function LinkFields({ widget, onUpdate }: { widget: LinkWidgetConfig; onUpdate: 
                     onChange={event => onUpdate({ customColor: event.target.value })} />
                 <OptionalText value={widget.customColor} placeholder="使用平台默认颜色" onChange={customColor => onUpdate({ customColor })} />
             </div>
-        </label>
-    </>
-}
-
-function ImageFields({ widget, onUpdate }: { widget: ImageWidgetConfig; onUpdate: WidgetEditorPanelProps['onUpdate'] }) {
-    const [status, setStatus] = useState<string | null>(null)
-
-    const replaceImage = async (file?: File) => {
-        if (!file) return
-        setStatus('正在压缩并上传…')
-        try {
-            onUpdate({ src: await uploadImage(file) })
-            setStatus('图片已替换')
-        } catch (error) {
-            setStatus(error instanceof Error ? error.message : '图片上传失败')
-        }
-    }
-
-    return <>
-        <label className={labelClass}>替换图片
-            <span className="cursor-pointer rounded-xl bg-black px-3 py-2.5 text-center text-sm font-medium text-white hover:bg-black/80">
-                选择图片
-                <input className="hidden" type="file" accept="image/*"
-                    onChange={event => { void replaceImage(event.target.files?.[0]); event.target.value = '' }} />
-            </span>
-            {status && <span className="text-xs font-normal text-black/50">{status}</span>}
-        </label>
-        <label className={labelClass}>图片地址
-            <input className={fieldClass} type="url" value={widget.src} onChange={event => onUpdate({ src: event.target.value })} />
-        </label>
-        <label className={labelClass}>替代文字
-            <OptionalText value={widget.alt} onChange={alt => onUpdate({ alt })} />
-        </label>
-        <label className={labelClass}>标题
-            <OptionalText value={widget.title} onChange={title => onUpdate({ title })} />
-        </label>
-        <label className={labelClass}>副标题
-            <OptionalText value={widget.subtitle} onChange={subtitle => onUpdate({ subtitle })} />
-        </label>
-        <label className={labelClass}>图片填充方式
-            <select className={fieldClass} value={widget.objectFit || 'cover'}
-                onChange={event => onUpdate({ objectFit: event.target.value as ImageWidgetConfig['objectFit'] })}>
-                <option value="cover">裁切填满</option>
-                <option value="contain">完整显示</option>
-            </select>
         </label>
     </>
 }
