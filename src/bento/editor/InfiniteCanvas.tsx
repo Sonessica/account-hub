@@ -5,7 +5,8 @@
  * Pan freely in four directions; cards snap to grid cells.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { motion, useMotionValue, useSpring } from 'framer-motion'
 import { BENTO_GAP, BENTO_UNIT } from '@/bento/core/BentoSizeMap'
 import { WidgetRenderer } from '@/bento/widgets'
 import { WidgetEditOverlay } from '@/bento/editor'
@@ -137,6 +138,7 @@ export function InfiniteCanvas({
     const viewportRef = useRef<HTMLDivElement>(null)
     const [pan, setPan] = useState({ x: 0, y: 0 })
     const [query, setQuery] = useState('')
+    const [draggingId, setDraggingId] = useState<string | null>(null)
     const panDrag = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null)
     const cardDrag = useRef<{
         id: string
@@ -147,6 +149,12 @@ export function InfiniteCanvas({
         moved: boolean
     } | null>(null)
     const centeredOnce = useRef(false)
+
+    // Smooth visual offset while dragging a card
+    const dragX = useMotionValue(0)
+    const dragY = useMotionValue(0)
+    const smoothX = useSpring(dragX, { stiffness: 420, damping: 38, mass: 0.55 })
+    const smoothY = useSpring(dragY, { stiffness: 420, damping: 38, mass: 0.55 })
 
     // Center search box on first paint
     useEffect(() => {
@@ -180,18 +188,26 @@ export function InfiniteCanvas({
         if (c && isEditing) {
             const dx = e.clientX - c.startX
             const dy = e.clientY - c.startY
-            if (Math.abs(dx) + Math.abs(dy) > 4) c.moved = true
-            const cellX = Math.round((c.origX * STEP + dx) / STEP)
-            const cellY = Math.round((c.origY * STEP + dy) / STEP)
-            if (cellX !== c.origX || cellY !== c.origY) {
-                onUpdateWidget(c.id, { x: cellX, y: cellY })
-            }
+            if (Math.abs(dx) + Math.abs(dy) > 6) c.moved = true
+            dragX.set(dx)
+            dragY.set(dy)
         }
     }
 
     const onViewportPointerUp = () => {
+        const c = cardDrag.current
+        if (c && isEditing && c.moved) {
+            const dx = dragX.get()
+            const dy = dragY.get()
+            const cellX = Math.round((c.origX * STEP + dx) / STEP)
+            const cellY = Math.round((c.origY * STEP + dy) / STEP)
+            onUpdateWidget(c.id, { x: cellX, y: cellY })
+        }
         panDrag.current = null
         cardDrag.current = null
+        setDraggingId(null)
+        dragX.set(0)
+        dragY.set(0)
     }
 
     const startCardDrag = (e: React.PointerEvent, w: WidgetConfig) => {
@@ -200,6 +216,9 @@ export function InfiniteCanvas({
         const x = typeof w.x === 'number' ? w.x : 0
         const y = typeof w.y === 'number' ? w.y : 0
         cardDrag.current = { id: w.id, startX: e.clientX, startY: e.clientY, origX: x, origY: y, moved: false }
+        setDraggingId(w.id)
+        dragX.set(0)
+        dragY.set(0)
         ;(viewportRef.current as HTMLElement)?.setPointerCapture(e.pointerId)
         onSelect(w.id)
     }
@@ -217,7 +236,7 @@ export function InfiniteCanvas({
             onPointerCancel={onViewportPointerUp}
         >
             <div
-                className="absolute left-0 top-0"
+                className="absolute left-0 top-0 will-change-transform"
                 style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0)` }}
             >
                 {/* Search pill — spicy-ladybug style, 1x4 at origin */}
@@ -246,19 +265,37 @@ export function InfiniteCanvas({
                     const y = typeof w.y === 'number' ? w.y : 0
                     const px = widgetPixelSize(w.size)
                     const hit = matchesQuery(w, query)
+                    const isDragged = draggingId === w.id
                     return (
-                        <div
+                        <motion.div
                             key={w.id}
                             data-canvas-card
-                            className={`absolute ${hit ? 'opacity-100' : 'opacity-25'}`}
-                            style={{
+                            className="absolute"
+                            initial={false}
+                            animate={{
                                 left: x * STEP,
                                 top: y * STEP,
                                 width: px.width,
                                 height: px.height,
-                                zIndex: 1,
-                                transition: 'opacity .2s ease',
+                                opacity: hit ? 1 : 0.25,
+                                scale: isDragged ? 1.045 : 1,
+                                zIndex: isDragged ? 40 : 1,
+                                boxShadow: isDragged
+                                    ? '0 18px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)'
+                                    : '0 0px 0px rgba(0,0,0,0)',
                             }}
+                            transition={{
+                                type: 'spring',
+                                stiffness: 380,
+                                damping: 32,
+                                mass: 0.6,
+                                opacity: { duration: 0.18 },
+                            }}
+                            style={
+                                isDragged
+                                    ? { x: smoothX, y: smoothY, position: 'absolute' }
+                                    : { position: 'absolute' }
+                            }
                             onPointerDown={(e) => {
                                 if (!isEditing) {
                                     e.stopPropagation()
@@ -274,8 +311,10 @@ export function InfiniteCanvas({
                                 }
                             }}
                         >
-                            <WidgetRenderer config={w} isEditing={isEditing} onConfigChange={(u) => onUpdateWidget(w.id, u)} />
-                            {isEditing && selectedWidgetId === w.id && !editingWidgetId && (
+                            <div className="h-full w-full overflow-hidden rounded-[27px]">
+                                <WidgetRenderer config={w} isEditing={isEditing} onConfigChange={(u) => onUpdateWidget(w.id, u)} />
+                            </div>
+                            {isEditing && selectedWidgetId === w.id && !editingWidgetId && !isDragged && (
                                 <WidgetEditOverlay
                                     widget={w}
                                     onDelete={() => onRemoveWidget(w.id)}
@@ -283,7 +322,7 @@ export function InfiniteCanvas({
                                     onUpdate={(u) => onUpdateWidget(w.id, u)}
                                 />
                             )}
-                        </div>
+                        </motion.div>
                     )
                 })}
             </div>
