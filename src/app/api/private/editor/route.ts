@@ -13,10 +13,16 @@ function validSnapshot(value: unknown): value is EditorSnapshot {
   if (!value || typeof value !== 'object') return false
   const data = value as Record<string, unknown>
   const profile = data.profile as Record<string, unknown> | undefined
-  return Array.isArray(data.widgets) && data.widgets.length <= 500 &&
-    !!profile && typeof profile.name === 'string' && profile.name.length <= 200 &&
+  const okProfile = !!profile && typeof profile.name === 'string' && profile.name.length <= 200 &&
     typeof profile.description === 'string' && profile.description.length <= 5000 &&
     (profile.avatarUrl === undefined || typeof profile.avatarUrl === 'string')
+  if (!Array.isArray(data.widgets) || data.widgets.length > 500 || !okProfile) return false
+  if (data.siteSettings !== undefined) {
+    const settings = data.siteSettings as Record<string, unknown>
+    if (!settings || typeof settings !== 'object') return false
+    if (settings.quickNav !== undefined && !Array.isArray(settings.quickNav)) return false
+  }
+  return true
 }
 
 export async function PUT(request: Request) {

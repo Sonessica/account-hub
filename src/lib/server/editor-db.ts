@@ -7,6 +7,9 @@ import { DatabaseSync } from 'node:sqlite'
 export interface EditorSnapshot {
   widgets: unknown[]
   profile: { name: string; description: string; avatarUrl?: string }
+  siteSettings?: {
+    quickNav?: { id?: string; label: string; url: string }[]
+  }
 }
 
 export interface StoredEditor extends EditorSnapshot {
@@ -43,7 +46,8 @@ export function readEditor(): StoredEditor | null {
     widgets: Array.isArray(parsed.widgets)
       ? parsed.widgets
       : Array.isArray(parsed.desktopWidgets) ? parsed.desktopWidgets : [],
-    profile: parsed.profile || { name: 'LinkCard', description: '' },
+    profile: parsed.profile || { name: 'ATCHOOO', description: '' },
+    ...(parsed.siteSettings ? { siteSettings: parsed.siteSettings } : {}),
   }
   return { ...snapshot, revision: row.revision, updatedAt: row.updated_at }
 }

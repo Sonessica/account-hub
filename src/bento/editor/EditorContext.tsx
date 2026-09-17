@@ -11,6 +11,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import type { WidgetConfig, WidgetSize } from '../widgets/types'
 import { useUserStore } from '@/stores'
+import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, type SiteSettings } from './siteSettings'
 
 export type ViewMode = 'desktop' | 'mobile'
 
@@ -70,6 +71,9 @@ interface EditorContextValue {
     // Profile management
     profile: ProfileData
     updateProfile: (updates: Partial<ProfileData>) => void
+    // Site settings (quick nav, etc.)
+    siteSettings: SiteSettings
+    updateSiteSettings: (settings: SiteSettings) => void
     // Persistence
     loadLayout: () => WidgetConfig[] | null
     clearLayout: () => void
@@ -120,11 +124,12 @@ export const EditorProvider: React.FC<{
         mobileWidgets: WidgetConfig[]
         layoutIndependent: { desktop: boolean; mobile: boolean }
         profile: ProfileData
+        siteSettings?: SiteSettings
     }
 }> = ({ children, persistence = 'legacy', initialSnapshot }) => {
     const isExternal = persistence === 'external'
     const { user, updateProfile: updateUserProfile } = useUserStore()
-    const [isEditing, setIsEditing] = useState(true) // Default to edit mode for development convenience
+    const [isEditing, setIsEditing] = useState(false) // Visitor view first; footer toggles edit
     const [viewMode, setViewMode] = useState<ViewMode>('desktop')
     const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null)
     const [desktopWidgets, setDesktopWidgets] = useState<WidgetConfig[]>(initialSnapshot?.desktopWidgets || [])
@@ -134,10 +139,13 @@ export const EditorProvider: React.FC<{
         mobile: false,
     })
     const [profile, setProfile] = useState<ProfileData>(initialSnapshot?.profile || {
-        name: 'LinkCard',
-        description: "The first context-aware identity OS. Create a dynamic Link Card that lives natively in Apple Wallet. Features AI agents, offline sync, and zero-app sharing.",
+        name: 'ATCHOOO',
+        description: 'Personal hub',
         avatarUrl: undefined,
     })
+    const [siteSettings, setSiteSettings] = useState<SiteSettings>(
+        () => normalizeSiteSettings(initialSnapshot?.siteSettings || DEFAULT_SITE_SETTINGS)
+    )
 
     // Current widgets based on view mode
     const widgets = viewMode === 'desktop' ? desktopWidgets : mobileWidgets
@@ -716,6 +724,10 @@ export const EditorProvider: React.FC<{
         setSelectedWidgetId(null)
     }, [isExternal])
 
+    const updateSiteSettings = useCallback((next: SiteSettings) => {
+        setSiteSettings(normalizeSiteSettings(next))
+    }, [])
+
     return (
         <EditorContext.Provider
             value={{
@@ -742,6 +754,8 @@ export const EditorProvider: React.FC<{
                 reorderWidgets,
                 profile,
                 updateProfile,
+                siteSettings,
+                updateSiteSettings,
                 loadLayout,
                 clearLayout,
                 syncDesktopToMobile,

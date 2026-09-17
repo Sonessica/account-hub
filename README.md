@@ -5,9 +5,10 @@ Self-hosted personal account / Bento editor for a single trusted environment (NA
 ## What this is
 
 - Single-user Bento editor at `/bento/editor`
+- **Public, no password**; default view mode, footer "编辑" enters edit
 - Data stored in local SQLite (`node:sqlite`), not Supabase
-- Admin password gate + revisioned auto-save
-- Optional first-run import from old browser localStorage cards
+- ATCHOOO splash intro; images as WebP under `data/media`
+- Footer settings: profile, quick nav (Vaultwarden, etc.), export/import
 
 ## Requirements
 

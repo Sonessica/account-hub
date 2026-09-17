@@ -5,10 +5,12 @@ import { EditorProvider, useEditor, type ProfileData } from './EditorContext'
 import type { WidgetConfig } from '../widgets/types'
 import savingLoader from './SavingLoader.module.css'
 import { AtchoooSplash, SPLASH_DURATION_MS } from './AtchoooSplash'
+import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, type SiteSettings } from './siteSettings'
 
 type Snapshot = {
   widgets: WidgetConfig[]
   profile: ProfileData
+  siteSettings: SiteSettings
 }
 type Stored = Snapshot & { revision: number; updatedAt: string }
 type GateState = 'splash' | 'import' | 'ready' | 'error'
@@ -17,8 +19,8 @@ type SaveState = 'saved' | 'saving' | 'error' | 'conflict'
 const LAYOUT_KEY = 'openbento-widgets'
 const PROFILE_KEY = 'openbento-profile'
 const defaultProfile: ProfileData = {
-  name: 'LinkCard',
-  description: 'The first context-aware identity OS. Create a dynamic Link Card that lives natively in Apple Wallet. Features AI agents, offline sync, and zero-app sharing.',
+  name: 'ATCHOOO',
+  description: 'Personal hub',
 }
 
 function localSnapshot(): Snapshot | null {
@@ -35,6 +37,7 @@ function localSnapshot(): Snapshot | null {
         description: typeof profile?.description === 'string' ? profile.description : defaultProfile.description,
         ...(typeof profile?.avatarUrl === 'string' ? { avatarUrl: profile.avatarUrl } : {}),
       },
+      siteSettings: DEFAULT_SITE_SETTINGS,
     }
   } catch {
     return null
@@ -42,12 +45,12 @@ function localSnapshot(): Snapshot | null {
 }
 
 function PersistenceSync({ initial }: { initial: Stored | null }) {
-  const { widgets, profile } = useEditor()
+  const { widgets, profile, siteSettings } = useEditor()
   const [status, setStatus] = useState<SaveState>('saved')
   const revision = useRef(initial?.revision || 0)
-  const latest = useRef<Snapshot>({ widgets, profile })
+  const latest = useRef<Snapshot>({ widgets, profile, siteSettings })
   const savedHash = useRef(initial ? JSON.stringify({
-    widgets: initial.widgets, profile: initial.profile,
+    widgets: initial.widgets, profile: initial.profile, siteSettings: initial.siteSettings || DEFAULT_SITE_SETTINGS,
   }) : '')
   const running = useRef(false)
   const conflicted = useRef(false)
@@ -93,7 +96,7 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
   }, [])
 
   useEffect(() => {
-    latest.current = { widgets, profile }
+    latest.current = { widgets, profile, siteSettings }
     const timer = setTimeout(() => {
       if (!hydrated.current) return
       const snapshot = latest.current
@@ -102,7 +105,7 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
       if (JSON.stringify(snapshot) !== savedHash.current) void save()
     }, 1500)
     return () => clearTimeout(timer)
-  }, [widgets, profile, initial, save])
+  }, [widgets, profile, siteSettings, initial, save])
 
   if (status === 'saved') return null
   if (status === 'saving') return <div role="status" aria-label="正在保存到 NAS" className="fixed top-3 right-4 z-[100] rounded-xl bg-white/95 px-3 pb-3 pt-1 shadow-lg">
@@ -121,6 +124,7 @@ function toEditorInitial(snapshot: Stored | null) {
     mobileWidgets: [] as WidgetConfig[],
     layoutIndependent: { desktop: false, mobile: false },
     profile: snapshot.profile,
+    siteSettings: normalizeSiteSettings(snapshot.siteSettings || DEFAULT_SITE_SETTINGS),
   }
 }
 

@@ -1,20 +1,15 @@
 'use client'
 
 import React, { useEffect, useRef, useMemo, useCallback, useState } from 'react'
-import { v4 as uuidv4 } from 'uuid'
 import { motion } from 'framer-motion'
 
 import { EditorToolbar, useEditor, EditorFooter, WidgetEditorPanel } from '@/bento/editor'
 import { WidgetEditOverlay } from '@/bento/editor'
+import { QuickNav } from '@/bento/editor/QuickNav'
+import { SettingsModal } from '@/bento/editor/SettingsModal'
 import { ResponsiveBentoGrid } from '@/bento/grid'
 import { GridDndProvider, DraggableGridItem, swapItems, type GridItem } from '@/bento/dnd'
-import {
-    WidgetRenderer,
-    createLinkWidgetConfig,
-    createImageWidgetConfig,
-    createTextWidgetConfig,
-    createMapWidgetConfig,
-} from '@/bento/widgets'
+import { WidgetRenderer } from '@/bento/widgets'
 import type { WidgetConfig, WidgetSize } from '@/bento/widgets/types'
 import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
 
@@ -23,9 +18,9 @@ const GRID_BREAKPOINTS = { mobile: 768, tablet: 1750 }
 // ============ Editor View Wrapper ============
 
 const EditorView: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { isEditing } = useEditor()
     return (
-        <div className="min-h-screen bg-[#F5F5F7] pb-32 transition-colors duration-500">
-            {/* Main Content Area */}
+        <div className={`min-h-screen bg-[#F5F5F7] transition-colors duration-500 ${isEditing ? 'pb-32' : 'pb-20'}`}>
             <div className="flex justify-center px-8 py-12 overflow-x-hidden">
                 <div
                     className="w-full max-w-[1760px] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
@@ -36,8 +31,7 @@ const EditorView: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </div>
             </div>
 
-            <EditorToolbar />
-            <EditorFooter />
+            {isEditing && <EditorToolbar />}
         </div>
     )
 }
@@ -173,35 +167,14 @@ const EditorContent: React.FC = () => {
         selectedWidgetId,
         setSelectedWidgetId,
         isEditing,
+        setIsEditing,
         removeWidget,
         updateWidget,
-        addWidget,
         reorderWidgets,
     } = useEditor()
     const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
     const editingWidget = widgets.find((widget) => widget.id === editingWidgetId) || null
     const containerRef = useRef<HTMLDivElement>(null)
-    const hasInitialized = useRef(false)
-
-    // Initialize with example data if empty
-    useEffect(() => {
-        if (!hasInitialized.current && widgets.length === 0) {
-            hasInitialized.current = true
-
-            const exampleWidgets: WidgetConfig[] = [
-                { ...createLinkWidgetConfig('https://instagram.com/biuty.ai', '1x1'), id: uuidv4() },
-                { ...createLinkWidgetConfig('https://tiktok.com/@biuty.ai', '1x1'), id: uuidv4() },
-                { ...createLinkWidgetConfig('https://biuty.ai', '1x1'), id: uuidv4() },
-                { ...createLinkWidgetConfig('https://linkedin.com/company/biutyai', '1x1'), id: uuidv4() },
-                { ...createTextWidgetConfig('', 'note', '1x1'), id: uuidv4() },
-                { ...createImageWidgetConfig('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', '1x1'), id: uuidv4() },
-                { ...createLinkWidgetConfig('https://twitter.com/biutyai', '2x2'), id: uuidv4() },
-                { ...createMapWidgetConfig('Berlin, Germany', '2x2', { lat: 52.52, lng: 13.405, label: 'Berlin, Germany' }), id: uuidv4() },
-            ]
-
-            exampleWidgets.forEach((widget) => addWidget(widget))
-        }
-    }, [widgets.length, addWidget])
 
     // Click outside to deselect
     useEffect(() => {
@@ -303,13 +276,50 @@ const EditorContent: React.FC = () => {
     )
 }
 
+// ============ Page Shell (nav + settings + footer) ============
+
+const HubShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const {
+        isEditing,
+        setIsEditing,
+        profile,
+        updateProfile,
+        siteSettings,
+        updateSiteSettings,
+    } = useEditor()
+    const [showSettings, setShowSettings] = useState(false)
+
+    return (
+        <>
+            <QuickNav items={siteSettings.quickNav} />
+            {children}
+            <EditorFooter
+                isEditing={isEditing}
+                onToggleEdit={() => setIsEditing(!isEditing)}
+                onOpenSettings={() => setShowSettings(true)}
+            />
+            {showSettings && (
+                <SettingsModal
+                    profile={profile}
+                    settings={siteSettings}
+                    onProfileChange={updateProfile}
+                    onSettingsChange={updateSiteSettings}
+                    onClose={() => setShowSettings(false)}
+                />
+            )}
+        </>
+    )
+}
+
 // ============ Page ============
 
 export default function EditorPage() {
     return (
         <PersistentEditorProvider>
             <EditorView>
-                <EditorContent />
+                <HubShell>
+                    <EditorContent />
+                </HubShell>
             </EditorView>
         </PersistentEditorProvider>
     )

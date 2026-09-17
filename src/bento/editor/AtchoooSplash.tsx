@@ -1,73 +1,61 @@
 'use client'
 
 /**
- * ATCHOOO brand splash.
- * Sequence: stroke three O's → yellow curtain reveals blue → panel exits.
+ * ATCHOOO brand splash — filled geometric wordmark + yellow/blue curtain reveal.
  */
 
 import { useEffect, useState } from 'react'
 import './AtchoooSplash.css'
 
 const SPLASH_TOTAL_MS = 2100
-// Geometric monoline metrics (shared by ATCH paths and O circles)
-const STROKE = 22
-const O_R = 39
-const O_C = 2 * Math.PI * O_R // ≈ 245
 
-function BrandMark({ ink }: { ink: string }) {
+/**
+ * Filled geometric ATCHOOO. Letters share one drawing system:
+ * stem ~22 units on a 100 cap-height; O is a donut (outer/inner circles).
+ */
+function BrandMark({ ink, bg }: { ink: string; bg: string }) {
     return (
         <svg
-            viewBox="0 0 760 120"
+            viewBox="0 0 820 120"
             role="img"
             aria-label="ATCHOOO"
-            style={{
-                width: 'min(86vw, 720px)',
-                height: 'auto',
-                overflow: 'visible',
-            }}
+            style={{ width: 'min(88vw, 760px)', height: 'auto' }}
         >
-            <g
-                fill="none"
-                stroke={ink}
-                strokeWidth={STROKE}
-                strokeLinecap="butt"
-                strokeLinejoin="miter"
-            >
+            <g fill={ink}>
                 {/* A */}
-                <g transform="translate(8,10)">
-                    <path d="M6 100 L40 8 L74 100" />
-                    <path d="M20 68 H60" />
-                </g>
+                <path d="M18 110 L58 10 L78 10 L118 110 H94 L86 90 H50 L42 110 Z M56 70 H80 L68 38 Z" />
                 {/* T */}
-                <g transform="translate(98,10)">
-                    <path d="M6 11 H74" />
-                    <path d="M40 11 V100" />
-                </g>
-                {/* C — same circular language as O, open on the right */}
-                <g transform="translate(188,10)">
-                    <path d="M64 28 A39 39 0 1 0 64 72" />
-                </g>
+                <path d="M130 10 H210 V32 H181 V110 H159 V32 H130 Z" />
+                {/* C — ring segment, same outer geometry as O */}
+                <path d="M296 20 A50 50 0 1 0 296 100 L296 78 A28 28 0 1 1 296 42 Z" />
                 {/* H */}
-                <g transform="translate(278,10)">
-                    <path d="M12 8 V100" />
-                    <path d="M68 8 V100" />
-                    <path d="M12 54 H68" />
-                </g>
-                {/* O O O — animated progress rings */}
-                {[0, 1, 2].map((i) => (
-                    <g key={i} transform={`translate(${378 + i * 118}, 60)`}>
+                <path d="M330 10 H352 V50 H398 V10 H420 V110 H398 V72 H352 V110 H330 Z" />
+            </g>
+
+            {/* O O O — donuts; outer ring animated via dash on stroke overlay */}
+            {[0, 1, 2].map((i) => {
+                const cx = 490 + i * 110
+                const cy = 60
+                const r = 40
+                const c = 2 * Math.PI * r
+                return (
+                    <g key={i} transform={`translate(${cx} ${cy})`}>
+                        <circle r="40" fill={ink} />
+                        <circle r="18" fill={bg} />
                         <circle
                             className={`atch-oo atch-oo-${i + 1}`}
-                            cx="0"
-                            cy="0"
-                            r={O_R}
-                            strokeDasharray={O_C}
-                            strokeDashoffset={O_C}
+                            r={r}
+                            fill="none"
+                            stroke={ink}
+                            strokeWidth="8"
+                            strokeDasharray={c}
+                            strokeDashoffset={c}
                             transform="rotate(-90)"
+                            opacity="0.35"
                         />
                     </g>
-                ))}
-            </g>
+                )
+            })}
         </svg>
     )
 }
@@ -93,7 +81,7 @@ export function AtchoooSplash({ onDone }: { onDone?: () => void }) {
             style={{ pointerEvents: phase === 'exit' ? 'none' : 'auto' }}
         >
             <div className="absolute inset-0 flex items-center justify-center bg-[#1D4ED8]">
-                <BrandMark ink="#FFFFFF" />
+                <BrandMark ink="#FFFFFF" bg="#1D4ED8" />
             </div>
 
             <div
@@ -101,7 +89,7 @@ export function AtchoooSplash({ onDone }: { onDone?: () => void }) {
                     phase === 'reveal' || phase === 'exit' ? 'is-open' : ''
                 } ${phase === 'exit' ? 'is-exit' : ''}`}
             >
-                <BrandMark ink="#111111" />
+                <BrandMark ink="#111111" bg="#F5C518" />
             </div>
         </div>
     )

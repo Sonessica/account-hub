@@ -1,13 +1,14 @@
 # Account Hub
 
-自托管的单用户 Bento 编辑器 / 个人账号中心，面向 NAS 或私有网络。基于 OpenBento，持久化改为本地 SQLite。
+自托管的单用户 Bento 编辑器 / 个人主页，面向 NAS 或私有网络。基于 OpenBento，持久化改为本地 SQLite。
 
 ## 这是什么
 
 - 主入口：`/bento/editor`
+- **公开可访问**，无密码门禁；默认只读浏览，页脚「编辑」进入编辑
 - 数据落在本地 SQLite（`node:sqlite`），不依赖 Supabase
-- 管理密码门禁 + revision 乐观锁自动保存
-- 首次可选导入旧浏览器 localStorage 卡片
+- 首屏 ATCHOOO Splash；图片存 WebP 媒体目录
+- 页脚设置：个人资料、快捷导航（Vaultwarden 等）、导出/导入
 
 ## 环境要求
 
