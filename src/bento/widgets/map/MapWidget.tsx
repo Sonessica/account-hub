@@ -10,11 +10,11 @@
  * 2. After update, must check upward whether the parent folder's .folder.md description is still accurate.
  */
 
-import React, { useMemo, useEffect, useRef } from 'react'
+import React, { useMemo, useEffect } from 'react'
 import type { StyleSpecification } from 'maplibre-gl'
 import { BentoCard } from '@/bento/core'
 import { Card } from '@/design-system/patterns/Card'
-import { Map, MapControls, MapMarker, MarkerContent, useMap } from '@/components/ui/map'
+import { Map, MapMarker, MarkerContent, useMap } from '@/components/ui/map'
 import type { MapWidgetConfig, WidgetProps } from '../types'
 
 const CARTO_LIGHT = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
@@ -46,22 +46,18 @@ function stylesForConfig(style?: MapWidgetConfig['style']) {
 
 // ============ Map Widget Component ============
 
-// Internal component to handle map interactions
+// Internal component: disable interactions only; view sync lives in Map
 const MapContent: React.FC<{
     location?: MapWidgetConfig['location']
     zoom?: number
     isEditing: boolean
     onConfigChange?: (updates: Partial<MapWidgetConfig>) => void
     config: MapWidgetConfig
-}> = ({ location, zoom: configZoom, isEditing, onConfigChange, config }) => {
+}> = () => {
     const { map, isLoaded } = useMap()
-    const isUpdatingRef = useRef(false)
 
-    // Disable all map interactions (always, regardless of edit mode)
     useEffect(() => {
         if (!map || !isLoaded) return
-
-        // Always disable all interactions
         map.dragPan.disable()
         map.scrollZoom.disable()
         map.boxZoom.disable()
@@ -70,40 +66,6 @@ const MapContent: React.FC<{
         map.doubleClickZoom.disable()
         map.touchZoomRotate.disable()
     }, [map, isLoaded])
-
-    // Update map view when config changes (from external sources like search)
-    // Only update when location or zoom changes externally, not from user interaction
-    const prevLocationRef = useRef(location)
-    const prevZoomRef = useRef(configZoom)
-
-    useEffect(() => {
-        if (!map || !isLoaded || isUpdatingRef.current) return
-
-        // Check if location or zoom changed externally (not from map moveend)
-        const locationChanged = 
-            prevLocationRef.current?.lat !== location?.lat ||
-            prevLocationRef.current?.lng !== location?.lng
-        const zoomChanged = prevZoomRef.current !== configZoom
-
-        if (location && (locationChanged || zoomChanged)) {
-            const targetZoom = configZoom ?? 13 // Default zoom for searched locations
-
-            isUpdatingRef.current = true
-            map.flyTo({
-                center: [location.lng, location.lat],
-                zoom: targetZoom,
-                duration: 500,
-            })
-            // Reset flag after animation
-            setTimeout(() => {
-                isUpdatingRef.current = false
-            }, 600)
-
-            // Update refs
-            prevLocationRef.current = location
-            prevZoomRef.current = configZoom
-        }
-    }, [map, isLoaded, location, configZoom])
 
     return null
 }
@@ -145,16 +107,16 @@ export const MapWidget: React.FC<WidgetProps<MapWidgetConfig>> = ({
                         position: 'relative'
                     }}
                 >
-                {location ? (
-                    <Map center={center} zoom={mapZoom} interactive={false} styles={mapStyles}>
-                        <MapContent
-                            location={location}
-                            zoom={zoom}
-                            isEditing={isEditing}
-                            onConfigChange={onConfigChange}
-                            config={config}
-                        />
-                        <MapMarker longitude={location.lng} latitude={location.lat} draggable={false}>
+                <Map center={center} zoom={mapZoom} interactive={false} styles={mapStyles}>
+                    <MapContent
+                        location={location}
+                        zoom={zoom}
+                        isEditing={isEditing}
+                        onConfigChange={onConfigChange}
+                        config={config}
+                    />
+                    {Number.isFinite(location?.lat) && Number.isFinite(location?.lng) && (
+                        <MapMarker longitude={location!.lng} latitude={location!.lat} draggable={false}>
                             <MarkerContent>
                                 <div style={{
                                     width: 26,
@@ -166,18 +128,8 @@ export const MapWidget: React.FC<WidgetProps<MapWidgetConfig>> = ({
                                 }} />
                             </MarkerContent>
                         </MapMarker>
-                    </Map>
-                ) : (
-                    <Map center={center} zoom={mapZoom} interactive={false} styles={mapStyles}>
-                        <MapContent
-                            location={location}
-                            zoom={zoom}
-                            isEditing={isEditing}
-                            onConfigChange={onConfigChange}
-                            config={config}
-                        />
-                    </Map>
-                )}
+                    )}
+                </Map>
 
                 {/* 标签 (Figma 风格玻璃态按钮) - 优先显示 location.label，如果没有则显示 title */}
                 {(location?.label || title) && (

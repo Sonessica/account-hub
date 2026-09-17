@@ -119,6 +119,40 @@ function Map({ children, styles, ...props }: MapProps) {
     }
   }, [resolvedTheme, mapStyles]);
 
+  // Keep view in sync when center/zoom props change after mount
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !isLoaded) return;
+    const nextCenter = props.center;
+    const nextZoom = props.zoom;
+    if (!Array.isArray(nextCenter) && nextZoom === undefined) return;
+
+    const current = map.getCenter();
+    const centerChanged =
+      Array.isArray(nextCenter) &&
+      (Math.abs(current.lng - nextCenter[0]) > 1e-6 ||
+        Math.abs(current.lat - nextCenter[1]) > 1e-6);
+    const zoomChanged =
+      typeof nextZoom === "number" && Math.abs(map.getZoom() - nextZoom) > 1e-3;
+
+    if (!centerChanged && !zoomChanged) return;
+
+    // Zoom-only: apply immediately so the slider stays responsive
+    if (zoomChanged && !centerChanged) {
+      map.jumpTo({ zoom: nextZoom as number });
+      return;
+    }
+
+    map.stop();
+    map.easeTo({
+      ...(Array.isArray(nextCenter)
+        ? { center: [nextCenter[0], nextCenter[1]] as [number, number] }
+        : {}),
+      ...(typeof nextZoom === "number" ? { zoom: nextZoom } : {}),
+      duration: 350,
+    });
+  }, [isLoaded, props.center, props.zoom]);
+
   const isLoading = !isMounted || !isLoaded || !isStyleLoaded;
 
   return (

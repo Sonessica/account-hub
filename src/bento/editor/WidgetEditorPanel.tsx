@@ -153,10 +153,25 @@ function TextFields({ widget, onUpdate }: { widget: TextWidgetConfig; onUpdate: 
     </>
 }
 
+function parseNumberInput(raw: string): number | null {
+    if (raw.trim() === '' || raw.trim() === '-') return null
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : null
+}
+
 function MapFields({ widget, onUpdate }: { widget: MapWidgetConfig; onUpdate: WidgetEditorPanelProps['onUpdate'] }) {
     const location = widget.location
-    const updateLocation = (patch: Partial<NonNullable<MapWidgetConfig['location']>>) =>
-        onUpdate({ location: { lat: location?.lat || 0, lng: location?.lng || 0, ...location, ...patch } })
+    const updateLocation = (patch: Partial<NonNullable<MapWidgetConfig['location']>>) => {
+        const next = {
+            lat: typeof location?.lat === 'number' ? location.lat : 0,
+            lng: typeof location?.lng === 'number' ? location.lng : 0,
+            ...location,
+            ...patch,
+        }
+        if (typeof next.lat === 'number') next.lat = Math.max(-90, Math.min(90, next.lat))
+        if (typeof next.lng === 'number') next.lng = Math.max(-180, Math.min(180, next.lng))
+        onUpdate({ location: next })
+    }
 
     return <>
         <label className={labelClass}>标题
@@ -167,12 +182,20 @@ function MapFields({ widget, onUpdate }: { widget: MapWidgetConfig; onUpdate: Wi
         </label>
         <div className="grid grid-cols-2 gap-3">
             <label className={labelClass}>纬度
-                <input className={fieldClass} type="number" step="any" value={location?.lat ?? 0}
-                    onChange={event => updateLocation({ lat: Number(event.target.value) })} />
+                <input className={fieldClass} type="number" step="any" value={location?.lat ?? ''}
+                    onChange={event => {
+                        const lat = parseNumberInput(event.target.value)
+                        if (lat === null) return
+                        updateLocation({ lat })
+                    }} />
             </label>
             <label className={labelClass}>经度
-                <input className={fieldClass} type="number" step="any" value={location?.lng ?? 0}
-                    onChange={event => updateLocation({ lng: Number(event.target.value) })} />
+                <input className={fieldClass} type="number" step="any" value={location?.lng ?? ''}
+                    onChange={event => {
+                        const lng = parseNumberInput(event.target.value)
+                        if (lng === null) return
+                        updateLocation({ lng })
+                    }} />
             </label>
         </div>
         <label className={labelClass}>缩放级别
