@@ -10,7 +10,7 @@
  * 2. After update, must check upward whether /src/bento/widgets/.folder.md description is still accurate.
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import { BentoCard } from '@/bento/core'
 import type { LinkWidgetConfig, WidgetProps, WidgetSize } from '../types'
 import { PLATFORM_REGISTRY, extractPlatformInfo } from '../registry'
@@ -476,6 +476,8 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
         backgroundImage,
     } = config
 
+    const [hovered, setHovered] = useState(false)
+
     const platform = configPlatform || extractPlatformInfo(url).platform
     const platformConfig = PLATFORM_REGISTRY[platform] || PLATFORM_REGISTRY.generic
     const displayTitle = title || platformConfig.name
@@ -491,133 +493,133 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
     const ctaText = action?.label || platformConfig.ctaLabel || 'Visit'
     const layout = getSizeLayout(size)
     const isBar = size === 'bar'
-    const expandedTop = isBar ? '0%' : size === '1x1' ? '42%' : size === '2x2' ? '22%' : '32%'
-    const restTop = isBar ? '0%' : size === '1x1' ? '58%' : size === '2x2' ? '72%' : '64%'
+
+    // Shorter pink bar at rest; expands on hover
+    const panelTop = (() => {
+        if (isBar) return hovered ? '0%' : '18%'
+        if (size === '1x1') return hovered ? '38%' : '78%'
+        if (size === '2x2') return hovered ? '24%' : '78%'
+        return hovered ? '32%' : '76%'
+    })()
 
     const media = backgroundImage || null
 
     return (
-        <div
-            className="link-card-uiverse group relative h-full w-full overflow-hidden"
-            style={{ borderRadius: isBar ? 16 : 27 }}
+        <BentoCard
+            size={size}
+            backgroundColor={faceColor}
+            disableHover
+            style={{ position: 'relative', overflow: 'hidden' }}
             onClick={isEditing ? onClick : undefined}
         >
-            <style>{`
-                .link-card-uiverse .link-uiverse-panel { transition: top .5s cubic-bezier(.645,.045,.355,1), border-radius .5s cubic-bezier(.645,.045,.355,1); }
-                .link-card-uiverse:hover .link-uiverse-panel { top: ${expandedTop}; border-radius: ${isBar ? '16px' : '28px 20px 27px 27px'}; }
-            `}</style>
-
-            {/* Media / face */}
             <div
-                className="absolute inset-0 transition-all duration-500"
-                style={{
-                    background: media ? undefined : faceColor,
-                    borderRadius: 'inherit',
-                }}
+                className="group relative h-full w-full"
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
             >
-                {media && (
-                    <img
-                        src={media}
-                        alt=""
-                        draggable={false}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
-                    />
-                )}
-                {!media && (
-                    <div
-                        className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                        style={{
-                            background: `linear-gradient(160deg, ${faceColor} 0%, ${panelColor} 140%)`,
-                        }}
-                    />
-                )}
-            </div>
-
-            {/* Title / subtitle */}
-            <div className="absolute left-0 right-0 top-0 z-[1] px-5 pt-5">
+                {/* Media / face */}
                 <div
-                    className="font-medium"
-                    style={{
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: layout.fontSize,
-                        lineHeight: layout.fontSize === 18 ? '22px' : '18px',
-                        letterSpacing: layout.fontSize === 18 ? '-0.02em' : '-0.01em',
-                        color: media ? '#fff' : '#1a1a1a',
-                        display: '-webkit-box',
-                        WebkitLineClamp: layout.lineClamp,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        whiteSpace: 'pre-wrap',
-                        textShadow: media ? '0 1px 8px rgba(0,0,0,0.35)' : undefined,
-                    }}
+                    className="absolute inset-0"
+                    style={{ borderRadius: 'inherit' }}
                 >
-                    {displayTitle}
+                    {media ? (
+                        <img
+                            src={media}
+                            alt=""
+                            draggable={false}
+                            className="h-full w-full object-cover transition-transform duration-500"
+                            style={{ transform: hovered ? 'scale(1.08)' : 'scale(1)' }}
+                        />
+                    ) : (
+                        <>
+                            <div className="absolute inset-0" style={{ background: faceColor }} />
+                            <div
+                                className="absolute inset-0 transition-opacity duration-500"
+                                style={{
+                                    opacity: hovered ? 1 : 0,
+                                    background: `linear-gradient(160deg, ${faceColor} 0%, ${panelColor} 140%)`,
+                                }}
+                            />
+                        </>
+                    )}
                 </div>
-                {displaySubtitle && (
+
+                {/* Title / subtitle */}
+                <div className="absolute left-0 right-0 top-0 z-[1] px-5 pt-5">
                     <div
-                        className="mt-1"
+                        className="font-medium"
                         style={{
                             fontFamily: 'Inter, sans-serif',
-                            fontSize: layout.subtitleFontSize || 12,
-                            lineHeight: layout.subtitleFontSize === 14 ? '18px' : '16px',
-                            color: media ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.55)',
+                            fontSize: layout.fontSize,
+                            lineHeight: layout.fontSize === 18 ? '22px' : '18px',
+                            letterSpacing: layout.fontSize === 18 ? '-0.02em' : '-0.01em',
+                            color: media ? '#fff' : '#1a1a1a',
+                            display: '-webkit-box',
+                            WebkitLineClamp: layout.lineClamp,
+                            WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            textShadow: media ? '0 1px 6px rgba(0,0,0,0.3)' : undefined,
+                            whiteSpace: 'pre-wrap',
+                            textShadow: media ? '0 1px 8px rgba(0,0,0,0.35)' : undefined,
                         }}
                     >
-                        {displaySubtitle}
+                        {displayTitle}
                     </div>
-                )}
-            </div>
+                    {displaySubtitle && (
+                        <div
+                            className="mt-1"
+                            style={{
+                                fontFamily: 'Inter, sans-serif',
+                                fontSize: layout.subtitleFontSize || 12,
+                                lineHeight: layout.subtitleFontSize === 14 ? '18px' : '16px',
+                                color: media ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.55)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                textShadow: media ? '0 1px 6px rgba(0,0,0,0.3)' : undefined,
+                            }}
+                        >
+                            {displaySubtitle}
+                        </div>
+                    )}
+                </div>
 
-            {/* Bottom panel */}
-            <div
-                className="link-uiverse-panel absolute bottom-0 left-0 right-0 z-[2] overflow-hidden"
-                style={{
-                    top: restTop,
-                    background: panelColor,
-                    borderRadius: isBar ? 16 : '20px 20px 27px 27px',
-                    boxShadow: 'inset 0 5px 5px rgba(0,0,0,0.08)',
-                }}
-            >
-                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3 sm:px-5 sm:pb-4">
-                    <a
-                        href={isEditing ? undefined : iconTarget}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={stopAndGo(isEditing ? undefined : iconTarget)}
-                        className="flex size-9 items-center justify-center rounded-full bg-white/20 transition hover:scale-110 hover:bg-white/35"
-                        style={{ pointerEvents: isEditing ? 'none' : 'auto' }}
-                        aria-label={platformConfig.name}
-                    >
-                        <span className="flex size-6 items-center justify-center">
-                            {getPlatformIconComponent(platform, 20, customIcon)}
-                        </span>
-                    </a>
+                {/* Bottom panel */}
+                <div
+                    className="absolute bottom-0 left-0 right-0 z-[2] overflow-hidden transition-[top,border-radius] duration-500 ease-[cubic-bezier(0.645,0.045,0.355,1)]"
+                    style={{
+                        top: panelTop,
+                        background: panelColor,
+                        borderRadius: isBar ? 16 : hovered ? '28px 20px 27px 27px' : '20px 20px 27px 27px',
+                        boxShadow: 'inset 0 5px 5px rgba(0,0,0,0.08)',
+                    }}
+                >
+                    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3 sm:px-5 sm:pb-4">
+                        <a
+                            href={isEditing ? undefined : iconTarget}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={stopAndGo(isEditing ? undefined : iconTarget)}
+                            className="flex size-9 items-center justify-center rounded-full bg-white/20 transition hover:scale-110 hover:bg-white/35"
+                            style={{ pointerEvents: isEditing ? 'none' : 'auto' }}
+                            aria-label={platformConfig.name}
+                        >
+                            <span className="flex size-6 items-center justify-center">
+                                {getPlatformIconComponent(platform, 20, customIcon)}
+                            </span>
+                        </a>
 
-                    <button
-                        type="button"
-                        onClick={stopAndGo(isEditing ? undefined : url)}
-                        className="rounded-full bg-white px-3.5 py-1.5 text-[11px] font-semibold shadow-sm transition hover:bg-[#f55d56] hover:text-white sm:text-xs"
-                        style={{ color: panelColor, pointerEvents: isEditing ? 'none' : 'auto' }}
-                    >
-                        {ctaText}
-                    </button>
+                        <button
+                            type="button"
+                            onClick={stopAndGo(isEditing ? undefined : url)}
+                            className="rounded-full bg-white px-3.5 py-1.5 text-[11px] font-semibold shadow-sm transition hover:bg-[#f55d56] hover:text-white sm:text-xs"
+                            style={{ color: panelColor, pointerEvents: isEditing ? 'none' : 'auto' }}
+                        >
+                            {ctaText}
+                        </button>
+                    </div>
                 </div>
             </div>
-
-            {!isEditing && (
-                <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute inset-0 z-0"
-                    aria-label={displayTitle}
-                />
-            )}
-        </div>
+        </BentoCard>
     )
 }
 
