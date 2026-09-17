@@ -9,43 +9,66 @@ import { useEffect, useState } from 'react'
 import './AtchoooSplash.css'
 
 const SPLASH_TOTAL_MS = 2100
+// Geometric monoline metrics (shared by ATCH paths and O circles)
+const STROKE = 22
+const O_R = 39
+const O_C = 2 * Math.PI * O_R // ≈ 245
 
-function BrandMark({ ink, ring }: { ink: string; ring: string }) {
-    const dash = 264
-    const size = 'clamp(48px, 12vw, 104px)'
+function BrandMark({ ink }: { ink: string }) {
     return (
-        <div
-            className="flex items-center justify-center"
-            style={{ fontFamily: "'Inter', 'Arial Black', sans-serif", color: ink, gap: '0.04em' }}
+        <svg
+            viewBox="0 0 760 120"
+            role="img"
+            aria-label="ATCHOOO"
+            style={{
+                width: 'min(86vw, 720px)',
+                height: 'auto',
+                overflow: 'visible',
+            }}
         >
-            <span
-                className="font-black leading-none"
-                style={{ fontSize: size, letterSpacing: '-0.04em' }}
+            <g
+                fill="none"
+                stroke={ink}
+                strokeWidth={STROKE}
+                strokeLinecap="butt"
+                strokeLinejoin="miter"
             >
-                ATCH
-            </span>
-            {[0, 1, 2].map((i) => (
-                <svg
-                    key={i}
-                    viewBox="0 0 100 100"
-                    aria-hidden="true"
-                    style={{ width: size, height: size, flexShrink: 0 }}
-                >
-                    <circle
-                        className={`atch-oo atch-oo-${i + 1}`}
-                        cx="50"
-                        cy="50"
-                        r="42"
-                        fill="none"
-                        stroke={ring}
-                        strokeWidth="18"
-                        strokeDasharray={dash}
-                        strokeDashoffset={dash}
-                        transform="rotate(-90 50 50)"
-                    />
-                </svg>
-            ))}
-        </div>
+                {/* A */}
+                <g transform="translate(8,10)">
+                    <path d="M6 100 L40 8 L74 100" />
+                    <path d="M20 68 H60" />
+                </g>
+                {/* T */}
+                <g transform="translate(98,10)">
+                    <path d="M6 11 H74" />
+                    <path d="M40 11 V100" />
+                </g>
+                {/* C — same circular language as O, open on the right */}
+                <g transform="translate(188,10)">
+                    <path d="M64 28 A39 39 0 1 0 64 72" />
+                </g>
+                {/* H */}
+                <g transform="translate(278,10)">
+                    <path d="M12 8 V100" />
+                    <path d="M68 8 V100" />
+                    <path d="M12 54 H68" />
+                </g>
+                {/* O O O — animated progress rings */}
+                {[0, 1, 2].map((i) => (
+                    <g key={i} transform={`translate(${378 + i * 118}, 60)`}>
+                        <circle
+                            className={`atch-oo atch-oo-${i + 1}`}
+                            cx="0"
+                            cy="0"
+                            r={O_R}
+                            strokeDasharray={O_C}
+                            strokeDashoffset={O_C}
+                            transform="rotate(-90)"
+                        />
+                    </g>
+                ))}
+            </g>
+        </svg>
     )
 }
 
@@ -70,7 +93,7 @@ export function AtchoooSplash({ onDone }: { onDone?: () => void }) {
             style={{ pointerEvents: phase === 'exit' ? 'none' : 'auto' }}
         >
             <div className="absolute inset-0 flex items-center justify-center bg-[#1D4ED8]">
-                <BrandMark ink="#FFFFFF" ring="#FFFFFF" />
+                <BrandMark ink="#FFFFFF" />
             </div>
 
             <div
@@ -78,7 +101,7 @@ export function AtchoooSplash({ onDone }: { onDone?: () => void }) {
                     phase === 'reveal' || phase === 'exit' ? 'is-open' : ''
                 } ${phase === 'exit' ? 'is-exit' : ''}`}
             >
-                <BrandMark ink="#111111" ring="#111111" />
+                <BrandMark ink="#111111" />
             </div>
         </div>
     )
