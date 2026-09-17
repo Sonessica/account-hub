@@ -3,7 +3,6 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { NextResponse } from 'next/server'
 import sharp from 'sharp'
-import { isAuthenticated, sameOrigin } from '@/lib/server/editor-auth'
 
 export const runtime = 'nodejs'
 const MAX_UPLOAD_BYTES = 20_000_000
@@ -12,10 +11,8 @@ function mediaDirectory() {
   return resolve(process.env.ACCOUNT_HUB_MEDIA_PATH || '/app/data/media')
 }
 
+// Public personal hub: image upload open like the rest of the editor APIs.
 export async function POST(request: Request) {
-  if (!await isAuthenticated()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!sameOrigin(request)) return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
-
   const form = await request.formData()
   const file = form.get('file')
   if (!(file instanceof File) || !file.type.startsWith('image/')) {

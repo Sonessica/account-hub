@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import { isAuthenticated, sameOrigin } from '@/lib/server/editor-auth'
 import { readEditor, saveEditor, type EditorSnapshot } from '@/lib/server/editor-db'
 
 export const runtime = 'nodejs'
 const MAX_SNAPSHOT_BYTES = 20_000_000
 
+// Public personal hub: no password gate. Snapshot is the single shared page.
 export async function GET() {
-  if (!await isAuthenticated()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   return NextResponse.json({ snapshot: readEditor() }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
@@ -21,8 +20,6 @@ function validSnapshot(value: unknown): value is EditorSnapshot {
 }
 
 export async function PUT(request: Request) {
-  if (!await isAuthenticated()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!sameOrigin(request)) return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
   const length = Number(request.headers.get('content-length') || 0)
   if (length > MAX_SNAPSHOT_BYTES) return NextResponse.json({ error: 'Snapshot too large' }, { status: 413 })
   const raw = await request.text()

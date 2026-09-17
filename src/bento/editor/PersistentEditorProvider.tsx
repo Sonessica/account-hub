@@ -4,13 +4,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorProvider, useEditor, type ProfileData } from './EditorContext'
 import type { WidgetConfig } from '../widgets/types'
 import savingLoader from './SavingLoader.module.css'
+import { AtchoooSplash, SPLASH_DURATION_MS } from './AtchoooSplash'
 
 type Snapshot = {
   widgets: WidgetConfig[]
   profile: ProfileData
 }
 type Stored = Snapshot & { revision: number; updatedAt: string }
-type GateState = 'loading' | 'login' | 'import' | 'ready' | 'error'
+type GateState = 'splash' | 'import' | 'ready' | 'error'
 type SaveState = 'saved' | 'saving' | 'error' | 'conflict'
 
 const LAYOUT_KEY = 'openbento-widgets'
@@ -113,22 +114,37 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
   </div>
 }
 
+function toEditorInitial(snapshot: Stored | null) {
+  if (!snapshot) return undefined
+  return {
+    desktopWidgets: snapshot.widgets,
+    mobileWidgets: [] as WidgetConfig[],
+    layoutIndependent: { desktop: false, mobile: false },
+    profile: snapshot.profile,
+  }
+}
+
 export function PersistentEditorProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<GateState>('loading')
-  const [password, setPassword] = useState('')
+  const [state, setState] = useState<GateState>('splash')
   const [message, setMessage] = useState('')
   const [initial, setInitial] = useState<Stored | null>(null)
   const [draft, setDraft] = useState<Snapshot | null>(null)
+  const [splashDone, setSplashDone] = useState(false)
+  const dataReady = useRef(false)
+  const [showEditor, setShowEditor] = useState(false)
+
+  const finishIfReady = useCallback(() => {
+    if (dataReady.current && splashDone) setShowEditor(true)
+  }, [splashDone])
+
+  useEffect(() => { finishIfReady() }, [finishIfReady])
 
   const load = useCallback(async () => {
-    setState('loading')
     try {
-      const sessionResponse = await fetch('/api/private/session', { cache: 'no-store' })
-      const session = await sessionResponse.json()
-      if (!session.authenticated) { setState('login'); return }
       const response = await fetch('/api/private/editor', { cache: 'no-store' })
       if (!response.ok) throw new Error(`Load failed: ${response.status}`)
       const data = await response.json() as { snapshot: Stored | null }
+      dataReady.current = true
       if (data.snapshot) {
         setInitial(data.snapshot)
         setState('ready')
@@ -138,27 +154,13 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
         else { setInitial(null); setState('ready') }
       }
     } catch (error) {
+      dataReady.current = true
       setMessage(error instanceof Error ? error.message : '无法连接到 NAS 数据库')
       setState('error')
     }
   }, [])
 
   useEffect(() => { void load() }, [load])
-
-  async function login(event: React.FormEvent) {
-    event.preventDefault()
-    setMessage('')
-    const response = await fetch('/api/private/session', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
-    })
-    if (!response.ok) {
-      setMessage(response.status === 429 ? '尝试次数过多，请约 15 分钟后再试。' : '密码错误或登录失败')
-      return
-    }
-    setPassword('')
-    await load()
-  }
 
   async function saveInitial(snapshot: Snapshot) {
     setMessage('')
@@ -182,30 +184,50 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
     }
   }
 
-  if (state === 'ready') return <EditorProvider persistence="external" initialSnapshot={initial ? {
-    desktopWidgets: initial.widgets,
-    mobileWidgets: [],
-    layoutIndependent: { desktop: false, mobile: false },
-    profile: initial.profile,
-  } : undefined}><PersistenceSync initial={initial} />{children}</EditorProvider>
-  return <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-6 text-black">
-    <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
-      <h1 className="text-2xl font-semibold mb-3">Account Hub</h1>
-      {state === 'loading' && <p>正在读取 NAS 数据…</p>}
-      {state === 'login' && <form onSubmit={login}>
-        <p className="mb-4 text-sm text-gray-600">请输入此账号中心的管理密码。</p>
-        <input className="w-full rounded-xl border p-3" type="password" value={password} onChange={event => setPassword(event.target.value)} autoFocus required />
-        <button className="mt-4 w-full rounded-xl bg-black p-3 text-white" type="submit">进入</button>
-      </form>}
-      {state === 'import' && <>
-        <p className="mb-4 text-sm text-gray-600">NAS 数据库还是空的，发现当前浏览器有旧卡片。是否一次性导入？</p>
-        <button className="w-full rounded-xl bg-black p-3 text-white" onClick={() => { if (draft) void saveInitial(draft) }}>导入本地卡片</button>
-        <button className="mt-3 w-full rounded-xl border p-3" onClick={() => void saveInitial({
-          widgets: [], profile: defaultProfile,
-        })}>从空白开始（旧卡片仍留在此浏览器）</button>
-      </>}
-      {state === 'error' && <button className="rounded-xl bg-black p-3 text-white" onClick={() => void load()}>重试</button>}
-      {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
-    </div>
-  </div>
+  const ready = state === 'ready'
+
+  return (
+    <>
+      {!splashDone && (
+        <AtchoooSplash onDone={() => { setSplashDone(true) }} />
+      )}
+
+      {ready && showEditor && (
+        <EditorProvider persistence="external" initialSnapshot={toEditorInitial(initial)}>
+          <PersistenceSync initial={initial} />
+          {children}
+        </EditorProvider>
+      )}
+
+      {ready && !showEditor && (
+        <div className="min-h-screen bg-[#1D4ED8]" aria-hidden="true" />
+      )}
+
+      {state === 'import' && splashDone && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#F5F5F7] p-6 text-black">
+          <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
+            <h1 className="text-2xl font-semibold mb-3">ATCHOOO</h1>
+            <p className="mb-4 text-sm text-gray-600">NAS 数据库还是空的，发现当前浏览器有旧卡片。是否一次性导入？</p>
+            <button className="w-full rounded-xl bg-black p-3 text-white" onClick={() => { if (draft) void saveInitial(draft) }}>导入本地卡片</button>
+            <button className="mt-3 w-full rounded-xl border p-3" onClick={() => void saveInitial({
+              widgets: [], profile: defaultProfile,
+            })}>从空白开始（旧卡片仍留在此浏览器）</button>
+            {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
+          </div>
+        </div>
+      )}
+
+      {state === 'error' && splashDone && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#F5F5F7] p-6 text-black">
+          <div className="w-full max-w-md rounded-3xl bg-white p-8 shadow-xl">
+            <h1 className="text-2xl font-semibold mb-3">ATCHOOO</h1>
+            <p className="mb-4 text-sm text-gray-600">{message || '加载失败'}</p>
+            <button className="rounded-xl bg-black px-4 py-3 text-white" onClick={() => void load()}>重试</button>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
+
+export const _SPLASH_MS = SPLASH_DURATION_MS

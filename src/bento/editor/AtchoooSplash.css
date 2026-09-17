@@ -1,0 +1,39 @@
+@keyframes atch-draw-o {
+  from { stroke-dashoffset: 264; }
+  to { stroke-dashoffset: 0; }
+}
+
+.atch-oo {
+  animation: atch-draw-o 0.36s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+.atch-oo-1 { animation-delay: 0.08s; }
+.atch-oo-2 { animation-delay: 0.42s; }
+.atch-oo-3 { animation-delay: 0.76s; }
+
+.atch-yellow-layer {
+  transition: clip-path 0.42s cubic-bezier(0.65, 0, 0.35, 1);
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+}
+
+.atch-yellow-layer.is-open {
+  clip-path: polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%);
+}
+
+.atch-yellow-layer.is-exit {
+  transform: translateY(100%);
+  transition:
+    clip-path 0.42s cubic-bezier(0.65, 0, 0.35, 1),
+    transform 0.38s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.atch-splash.is-exit {
+  transform: translateY(-100%);
+  transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atch-oo {
+    animation-duration: 0.01s !important;
+    animation-delay: 0s !important;
+  }
+}
