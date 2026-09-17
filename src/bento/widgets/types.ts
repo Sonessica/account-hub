@@ -72,7 +72,13 @@ export interface LinkWidgetConfig extends BaseWidgetConfig {
     subtitle?: string // handle, description
     ctaLabel?: string // Follow, Get, Listen, etc.
     customIcon?: string // URL or emoji
-    customColor?: string // Custom background color
+    customColor?: string // Card face / media fallback color
+    /** Separate URL for the bottom-left icon (defaults to url) */
+    iconUrl?: string
+    /** Bottom menu / panel background color */
+    menuBg?: string
+    /** Full-card background image (uploaded WebP or remote URL) */
+    backgroundImage?: string
 }
 
 // ============ Image Widget ============

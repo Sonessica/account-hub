@@ -1,5 +1,7 @@
 'use client'
 
+import { useRef, useState } from 'react'
+
 import type {
     LinkWidgetConfig,
     MapWidgetConfig,
@@ -8,6 +10,7 @@ import type {
     WidgetConfig,
 } from '../widgets/types'
 import { ImageEditorModal } from './ImageEditorModal'
+import { uploadImage } from '@/lib/client/upload-image'
 
 interface WidgetEditorPanelProps {
     widget: WidgetConfig
@@ -17,6 +20,8 @@ interface WidgetEditorPanelProps {
 
 const fieldClass = 'w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/5'
 const labelClass = 'grid gap-1.5 text-xs font-medium text-black/60'
+const btnClassDark = 'rounded-xl bg-black px-3 py-2.5 text-sm font-medium text-white hover:bg-black/80'
+const btnGhostClass = 'rounded-xl border border-black/15 px-3 py-2.5 text-sm font-medium text-black hover:bg-black/5'
 
 function OptionalText({ value, onChange, placeholder }: {
     value?: string
@@ -65,6 +70,20 @@ export function WidgetEditorPanel({ widget, onUpdate, onClose }: WidgetEditorPan
 }
 
 function LinkFields({ widget, onUpdate }: { widget: LinkWidgetConfig; onUpdate: WidgetEditorPanelProps['onUpdate'] }) {
+    const [status, setStatus] = useState<string | null>(null)
+    const fileRef = useRef<HTMLInputElement>(null)
+
+    const uploadBg = async (file?: File) => {
+        if (!file) return
+        setStatus('上传背景中…')
+        try {
+            onUpdate({ backgroundImage: await uploadImage(file) })
+            setStatus('背景已更新')
+        } catch (error) {
+            setStatus(error instanceof Error ? error.message : '背景上传失败')
+        }
+    }
+
     return <>
         <label className={labelClass}>链接地址
             <input className={fieldClass} type="url" value={widget.url} onChange={event => onUpdate({ url: event.target.value })} />
@@ -78,15 +97,39 @@ function LinkFields({ widget, onUpdate }: { widget: LinkWidgetConfig; onUpdate: 
         <label className={labelClass}>按钮文字
             <OptionalText value={widget.ctaLabel} onChange={ctaLabel => onUpdate({ ctaLabel })} />
         </label>
-        <label className={labelClass}>自定义图标（URL 或 Emoji）
-            <OptionalText value={widget.customIcon} onChange={customIcon => onUpdate({ customIcon })} />
+        <label className={labelClass}>左下角图标跳转（可选，默认同链接）
+            <OptionalText value={widget.iconUrl} placeholder={widget.url} onChange={iconUrl => onUpdate({ iconUrl })} />
         </label>
-        <label className={labelClass}>背景颜色
+        <label className={labelClass}>卡片底色
             <div className="flex gap-2">
                 <input className="h-10 w-12 rounded-lg border border-black/10 p-1" type="color" value={widget.customColor || '#ffffff'}
                     onChange={event => onUpdate({ customColor: event.target.value })} />
-                <OptionalText value={widget.customColor} placeholder="使用平台默认颜色" onChange={customColor => onUpdate({ customColor })} />
+                <OptionalText value={widget.customColor} placeholder="平台默认" onChange={customColor => onUpdate({ customColor })} />
             </div>
+        </label>
+        <label className={labelClass}>底部菜单背景色
+            <div className="flex gap-2">
+                <input className="h-10 w-12 rounded-lg border border-black/10 p-1" type="color" value={widget.menuBg || '#fbb9b6'}
+                    onChange={event => onUpdate({ menuBg: event.target.value })} />
+                <OptionalText value={widget.menuBg} placeholder="#fbb9b6" onChange={menuBg => onUpdate({ menuBg })} />
+            </div>
+        </label>
+        <label className={labelClass}>整卡背景图
+            <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className={btnClassDark} onClick={() => fileRef.current?.click()}>上传图片</button>
+                {widget.backgroundImage && (
+                    <button type="button" className={btnGhostClass} onClick={() => { onUpdate({ backgroundImage: undefined }); setStatus(null) }}>清除</button>
+                )}
+                <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                    onChange={e => { void uploadBg(e.target.files?.[0]); e.target.value = '' }} />
+            </div>
+            {widget.backgroundImage && (
+                <img src={widget.backgroundImage} alt="" className="mt-1 h-20 w-full rounded-xl object-cover" />
+            )}
+            {status && <span className="text-xs font-normal text-black/50">{status}</span>}
+        </label>
+        <label className={labelClass}>自定义图标（URL 或 Emoji）
+            <OptionalText value={widget.customIcon} onChange={customIcon => onUpdate({ customIcon })} />
         </label>
     </>
 }

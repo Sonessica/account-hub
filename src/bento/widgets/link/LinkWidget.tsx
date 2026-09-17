@@ -447,51 +447,177 @@ const PLATFORM_ICON_BACKGROUNDS: Record<string, string> = {
 }
 
 
-// ============ Link Widget Component ============
+// ============ Link Widget Component (uiverse cowardly-newt style) ============
+
+function stopAndGo(href?: string) {
+    return (e: React.MouseEvent) => {
+        e.stopPropagation()
+        e.preventDefault()
+        if (href) window.open(href, '_blank', 'noopener,noreferrer')
+    }
+}
 
 export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
     config,
     onClick,
     isEditing = false,
 }) => {
-    const { url, size, platform: configPlatform, title, subtitle, ctaLabel, customColor, customIcon } = config
+    const {
+        url,
+        size,
+        platform: configPlatform,
+        title,
+        subtitle,
+        ctaLabel,
+        customColor,
+        customIcon,
+        iconUrl,
+        menuBg,
+        backgroundImage,
+    } = config
 
-    // Auto-detect platform if not provided
     const platform = configPlatform || extractPlatformInfo(url).platform
-    
-    // Ensure platform exists in registry, fallback to generic
     const platformConfig = PLATFORM_REGISTRY[platform] || PLATFORM_REGISTRY.generic
     const displayTitle = title || platformConfig.name
     const displaySubtitle = subtitle
-    const backgroundColor = customColor || PLATFORM_BACKGROUNDS[platform] || PLATFORM_BACKGROUNDS.generic || '#ffffff'
-    const iconBg = PLATFORM_ICON_BACKGROUNDS[platform] || PLATFORM_ICON_BACKGROUNDS.generic || '#ffffff'
+    const faceColor = customColor || PLATFORM_BACKGROUNDS[platform] || '#ffffff'
+    const panelColor = menuBg || '#fbb9b6'
+    const iconTarget = iconUrl || url
 
-    // Get action config
     const defaultAction = PLATFORM_ACTIONS[platform]
     const action = ctaLabel
         ? { ...defaultAction, label: ctaLabel }
         : defaultAction
-
-    // Get icon size based on widget size
+    const ctaText = action?.label || platformConfig.ctaLabel || 'Visit'
     const layout = getSizeLayout(size)
+    const isBar = size === 'bar'
+    const expandedTop = isBar ? '0%' : size === '1x1' ? '42%' : size === '2x2' ? '22%' : '32%'
+    const restTop = isBar ? '0%' : size === '1x1' ? '58%' : size === '2x2' ? '72%' : '64%'
+
+    const media = backgroundImage || null
 
     return (
-        <BentoCard
-            size={size}
-            backgroundColor={backgroundColor}
-            clickable={!isEditing}
-            href={isEditing ? undefined : url}
-            target={isEditing ? undefined : "_blank"}
+        <div
+            className="link-card-uiverse group relative h-full w-full overflow-hidden"
+            style={{ borderRadius: isBar ? 16 : 27 }}
+            onClick={isEditing ? onClick : undefined}
         >
-            <PlatformCardContent
-                icon={getPlatformIconComponent(platform, layout.iconSize, customIcon)}
-                iconBg={iconBg}
-                title={displayTitle}
-                subtitle={displaySubtitle}
-                action={action}
-                widgetSize={size}
-            />
-        </BentoCard>
+            <style>{`
+                .link-card-uiverse .link-uiverse-panel { transition: top .5s cubic-bezier(.645,.045,.355,1), border-radius .5s cubic-bezier(.645,.045,.355,1); }
+                .link-card-uiverse:hover .link-uiverse-panel { top: ${expandedTop}; border-radius: ${isBar ? '16px' : '28px 20px 27px 27px'}; }
+            `}</style>
+
+            {/* Media / face */}
+            <div
+                className="absolute inset-0 transition-all duration-500"
+                style={{
+                    background: media ? undefined : faceColor,
+                    borderRadius: 'inherit',
+                }}
+            >
+                {media && (
+                    <img
+                        src={media}
+                        alt=""
+                        draggable={false}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
+                    />
+                )}
+                {!media && (
+                    <div
+                        className="absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                        style={{
+                            background: `linear-gradient(160deg, ${faceColor} 0%, ${panelColor} 140%)`,
+                        }}
+                    />
+                )}
+            </div>
+
+            {/* Title / subtitle */}
+            <div className="absolute left-0 right-0 top-0 z-[1] px-5 pt-5">
+                <div
+                    className="font-medium"
+                    style={{
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: layout.fontSize,
+                        lineHeight: layout.fontSize === 18 ? '22px' : '18px',
+                        letterSpacing: layout.fontSize === 18 ? '-0.02em' : '-0.01em',
+                        color: media ? '#fff' : '#1a1a1a',
+                        display: '-webkit-box',
+                        WebkitLineClamp: layout.lineClamp,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        whiteSpace: 'pre-wrap',
+                        textShadow: media ? '0 1px 8px rgba(0,0,0,0.35)' : undefined,
+                    }}
+                >
+                    {displayTitle}
+                </div>
+                {displaySubtitle && (
+                    <div
+                        className="mt-1"
+                        style={{
+                            fontFamily: 'Inter, sans-serif',
+                            fontSize: layout.subtitleFontSize || 12,
+                            lineHeight: layout.subtitleFontSize === 14 ? '18px' : '16px',
+                            color: media ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.55)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            textShadow: media ? '0 1px 6px rgba(0,0,0,0.3)' : undefined,
+                        }}
+                    >
+                        {displaySubtitle}
+                    </div>
+                )}
+            </div>
+
+            {/* Bottom panel */}
+            <div
+                className="link-uiverse-panel absolute bottom-0 left-0 right-0 z-[2] overflow-hidden"
+                style={{
+                    top: restTop,
+                    background: panelColor,
+                    borderRadius: isBar ? 16 : '20px 20px 27px 27px',
+                    boxShadow: 'inset 0 5px 5px rgba(0,0,0,0.08)',
+                }}
+            >
+                <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3 sm:px-5 sm:pb-4">
+                    <a
+                        href={isEditing ? undefined : iconTarget}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={stopAndGo(isEditing ? undefined : iconTarget)}
+                        className="flex size-9 items-center justify-center rounded-full bg-white/20 transition hover:scale-110 hover:bg-white/35"
+                        style={{ pointerEvents: isEditing ? 'none' : 'auto' }}
+                        aria-label={platformConfig.name}
+                    >
+                        <span className="flex size-6 items-center justify-center">
+                            {getPlatformIconComponent(platform, 20, customIcon)}
+                        </span>
+                    </a>
+
+                    <button
+                        type="button"
+                        onClick={stopAndGo(isEditing ? undefined : url)}
+                        className="rounded-full bg-white px-3.5 py-1.5 text-[11px] font-semibold shadow-sm transition hover:bg-[#f55d56] hover:text-white sm:text-xs"
+                        style={{ color: panelColor, pointerEvents: isEditing ? 'none' : 'auto' }}
+                    >
+                        {ctaText}
+                    </button>
+                </div>
+            </div>
+
+            {!isEditing && (
+                <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute inset-0 z-0"
+                    aria-label={displayTitle}
+                />
+            )}
+        </div>
     )
 }
 
