@@ -499,78 +499,84 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
     const layout = getSizeLayout(size)
     const isBar = size === 'bar'
 
-    // Reference: rest top≈80% (thin bar), hover top≈20% (full panel)
-    const panelTop = isBar
-        ? (hovered ? '0%' : '22%')
-        : (hovered ? '20%' : '78%')
+    // Per-size metrics (px) so every card size looks consistent
+    const metrics = (() => {
+        switch (size) {
+            case '2x2':
+                return { restBar: 56, hoverTop: 96, avatar: 104, avatarBorder: 8, iconBtn: 40, iconGlyph: 22, ctaPx: 14, ctaPy: 8, ctaFont: 13, pad: 20, titleFs: 20, subFs: 14, radius: 27 }
+            case '1x2':
+                return { restBar: 48, hoverTop: 84, avatar: 88, avatarBorder: 7, iconBtn: 38, iconGlyph: 20, ctaPx: 12, ctaPy: 7, ctaFont: 12, pad: 16, titleFs: 16, subFs: 13, radius: 27 }
+            case '2x1':
+                return { restBar: 48, hoverTop: 84, avatar: 88, avatarBorder: 7, iconBtn: 38, iconGlyph: 20, ctaPx: 12, ctaPy: 7, ctaFont: 12, pad: 16, titleFs: 16, subFs: 13, radius: 27 }
+            case 'bar':
+                return { restBar: 56, hoverTop: 10, avatar: 48, avatarBorder: 5, iconBtn: 34, iconGlyph: 18, ctaPx: 10, ctaPy: 6, ctaFont: 11, pad: 12, titleFs: 14, subFs: 12, radius: 16 }
+            case '1x1':
+            default:
+                return { restBar: 44, hoverTop: 72, avatar: 68, avatarBorder: 6, iconBtn: 34, iconGlyph: 18, ctaPx: 10, ctaPy: 6, ctaFont: 11, pad: 14, titleFs: 15, subFs: 12, radius: 27 }
+        }
+    })()
 
-    // Avatar size scales with card
-    const avatarSize = size === '2x2' ? 112 : size === '1x1' ? 72 : 88
-    const avatarBorder = size === '2x2' ? 8 : 6
-
+    // Rest: thin bar at bottom (pixel height). Hover: panel top rises to leave room for avatar.
+    const panelTop = hovered ? metrics.hoverTop : `calc(100% - ${metrics.restBar}px)`
     const media = backgroundImage || null
 
     return (
         <BentoCard
             size={size}
-            backgroundColor={shellColor}
+            backgroundColor="#ffffff"
             disableHover
-            style={{ position: 'relative', overflow: 'hidden', padding: 3 }}
+            style={{ position: 'relative', overflow: 'hidden', padding: 0, border: 'none' }}
             onClick={isEditing ? onClick : undefined}
         >
             <div
                 className="relative h-full w-full"
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
-                style={{ borderRadius: isBar ? 14 : 26 }}
+                style={{ borderRadius: metrics.radius, overflow: 'hidden' }}
             >
-                {/* Media — full card at rest, circle avatar top-left on hover */}
+                {/* Media — edge-to-edge at rest; circle avatar top-left on hover */}
                 <div
                     className="absolute overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
                     style={{
                         zIndex: hovered ? 3 : 1,
                         top: hovered ? 10 : 0,
                         left: hovered ? 10 : 0,
-                        width: hovered ? avatarSize : '100%',
-                        height: hovered ? avatarSize : '100%',
-                        borderRadius: hovered ? '50%' : (isBar ? 14 : 26),
-                        border: hovered ? `${avatarBorder}px solid ${panelColor}` : `0px solid ${panelColor}`,
+                        right: hovered ? 'auto' : 0,
+                        bottom: hovered ? 'auto' : 0,
+                        width: hovered ? metrics.avatar : '100%',
+                        height: hovered ? metrics.avatar : '100%',
+                        borderRadius: hovered ? '50%' : metrics.radius,
+                        border: hovered ? `${metrics.avatarBorder}px solid ${panelColor}` : '0 solid transparent',
                         boxShadow: hovered ? '0 5px 5px rgba(96,75,74,0.19)' : 'none',
                     }}
                 >
                     {media ? (
-                        <img
-                            src={media}
-                            alt=""
-                            draggable={false}
-                            className="h-full w-full object-cover"
-                        />
+                        <img src={media} alt="" draggable={false} className="h-full w-full object-cover" />
                     ) : (
-                        <div
-                            className="h-full w-full"
-                            style={{ background: mediaFallback }}
-                        />
+                        <div className="h-full w-full" style={{ background: mediaFallback }} />
                     )}
                 </div>
 
-                {/* Bottom pink panel — expands on hover; holds title/subtitle + actions */}
+                {/* Bottom pink panel */}
                 <div
                     className="absolute bottom-0 left-0 right-0 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.645,0.045,0.355,1)]"
                     style={{
                         zIndex: 2,
-                        top: panelTop,
+                        top: typeof panelTop === 'number' ? panelTop : panelTop,
                         background: panelColor,
                         borderRadius: hovered
-                            ? (isBar ? 14 : '48px 20px 26px 26px')
-                            : (isBar ? 14 : '20px 20px 26px 26px'),
+                            ? `${Math.min(56, metrics.radius * 1.8)}px ${metrics.radius}px ${metrics.radius}px ${metrics.radius}px`
+                            : metrics.radius,
                         boxShadow: 'inset 0 5px 5px rgba(96,75,74,0.12)',
                     }}
                 >
-                    {/* Title / subtitle — clipped when bar is short, visible when expanded */}
+                    {/* Title / subtitle (revealed on hover) */}
                     <div
-                        className="absolute left-5 right-5"
+                        className="absolute left-0 right-0"
                         style={{
-                            top: isBar ? 12 : '18%',
+                            top: isBar ? 10 : metrics.avatar + 16,
+                            left: metrics.pad,
+                            right: metrics.pad,
                             opacity: hovered ? 1 : 0,
                             transform: hovered ? 'translateY(0)' : 'translateY(8px)',
                             transition: 'opacity .35s ease .08s, transform .35s ease .08s',
@@ -581,8 +587,8 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
                             className="font-semibold"
                             style={{
                                 fontFamily: 'Inter, sans-serif',
-                                fontSize: layout.fontSize === 18 ? 20 : 16,
-                                lineHeight: layout.fontSize === 18 ? '24px' : '20px',
+                                fontSize: metrics.titleFs,
+                                lineHeight: `${metrics.titleFs + 4}px`,
                                 color: '#ffffff',
                                 letterSpacing: '-0.02em',
                                 display: '-webkit-box',
@@ -596,14 +602,14 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
                         </div>
                         {displaySubtitle && (
                             <div
-                                className="mt-2"
+                                className="mt-1.5"
                                 style={{
                                     fontFamily: 'Inter, sans-serif',
-                                    fontSize: layout.subtitleFontSize === 14 ? 14 : 13,
-                                    lineHeight: '1.35',
+                                    fontSize: metrics.subFs,
+                                    lineHeight: `${metrics.subFs + 4}px`,
                                     color: 'rgba(255,255,255,0.92)',
                                     display: '-webkit-box',
-                                    WebkitLineClamp: 3,
+                                    WebkitLineClamp: size === '1x1' || isBar ? 2 : 3,
                                     WebkitBoxOrient: 'vertical',
                                     overflow: 'hidden',
                                     whiteSpace: 'pre-wrap',
@@ -614,27 +620,39 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
                         )}
                     </div>
 
-                    {/* Bottom row: icon left, CTA right — always pinned to panel bottom */}
-                    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 pb-3 sm:px-5 sm:pb-4">
+                    {/* Bottom action row */}
+                    <div
+                        className="absolute bottom-0 left-0 right-0 flex items-center justify-between"
+                        style={{ paddingLeft: metrics.pad, paddingRight: metrics.pad, paddingBottom: 12 }}
+                    >
                         <a
                             href={isEditing ? undefined : iconTarget}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={stopAndGo(isEditing ? undefined : iconTarget)}
-                            className="flex size-9 items-center justify-center transition hover:scale-110"
-                            style={{ pointerEvents: isEditing ? 'none' : 'auto' }}
+                            className="flex items-center justify-center transition hover:scale-110"
+                            style={{
+                                width: metrics.iconBtn,
+                                height: metrics.iconBtn,
+                                pointerEvents: isEditing ? 'none' : 'auto',
+                            }}
                             aria-label={platformConfig.name}
                         >
-                            <span className="flex size-6 items-center justify-center">
-                                {getPlatformIconComponent(platform, 20, customIcon)}
+                            <span style={{ width: metrics.iconGlyph, height: metrics.iconGlyph }} className="flex items-center justify-center">
+                                {getPlatformIconComponent(platform, metrics.iconGlyph, customIcon)}
                             </span>
                         </a>
 
                         <button
                             type="button"
                             onClick={stopAndGo(isEditing ? undefined : url)}
-                            className="rounded-full bg-white px-3.5 py-1.5 text-[11px] font-semibold shadow-sm transition hover:bg-[#f55d56] hover:text-white sm:text-xs"
-                            style={{ color: panelColor, pointerEvents: isEditing ? 'none' : 'auto' }}
+                            className="rounded-full bg-white font-semibold shadow-sm transition hover:bg-[#f55d56] hover:text-white"
+                            style={{
+                                color: panelColor,
+                                pointerEvents: isEditing ? 'none' : 'auto',
+                                fontSize: metrics.ctaFont,
+                                padding: `${metrics.ctaPy}px ${metrics.ctaPx}px`,
+                            }}
                         >
                             {ctaText}
                         </button>
