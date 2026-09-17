@@ -117,7 +117,7 @@ function Map({ children, styles, ...props }: MapProps) {
         { diff: true }
       );
     }
-  }, [resolvedTheme]);
+  }, [resolvedTheme, mapStyles]);
 
   const isLoading = !isMounted || !isLoaded || !isStyleLoaded;
 

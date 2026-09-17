@@ -11,10 +11,38 @@
  */
 
 import React, { useMemo, useEffect, useRef } from 'react'
+import type { StyleSpecification } from 'maplibre-gl'
 import { BentoCard } from '@/bento/core'
 import { Card } from '@/design-system/patterns/Card'
 import { Map, MapControls, MapMarker, MarkerContent, useMap } from '@/components/ui/map'
 import type { MapWidgetConfig, WidgetProps } from '../types'
+
+const CARTO_LIGHT = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
+const CARTO_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+const SATELLITE_STYLE: StyleSpecification = {
+    version: 8,
+    sources: {
+        satellite: {
+            type: 'raster',
+            tiles: [
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            ],
+            tileSize: 256,
+            attribution: 'Esri, Maxar, Earthstar Geographics',
+        },
+    },
+    layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
+}
+
+function stylesForConfig(style?: MapWidgetConfig['style']) {
+    if (style === 'dark') {
+        return { light: CARTO_DARK, dark: CARTO_DARK }
+    }
+    if (style === 'satellite') {
+        return { light: SATELLITE_STYLE, dark: SATELLITE_STYLE }
+    }
+    return undefined
+}
 
 // ============ Map Widget Component ============
 
@@ -86,7 +114,7 @@ export const MapWidget: React.FC<WidgetProps<MapWidgetConfig>> = ({
     isEditing = false,
     onConfigChange,
 }) => {
-    const { title, location, size, zoom } = config
+    const { title, location, size, zoom, style } = config
 
     // Convert location from {lat, lng} to [lng, lat] format for mapcn
     const mapCenter = useMemo<[number, number] | undefined>(() => {
@@ -98,6 +126,7 @@ export const MapWidget: React.FC<WidgetProps<MapWidgetConfig>> = ({
     const defaultCenter: [number, number] = [-122.4194, 37.7749]
     const center = mapCenter || defaultCenter
     const mapZoom = zoom ?? 11 // Use config zoom or default
+    const mapStyles = useMemo(() => stylesForConfig(style), [style])
 
     return (
         <BentoCard
@@ -117,7 +146,7 @@ export const MapWidget: React.FC<WidgetProps<MapWidgetConfig>> = ({
                     }}
                 >
                 {location ? (
-                    <Map center={center} zoom={mapZoom} interactive={false}>
+                    <Map center={center} zoom={mapZoom} interactive={false} styles={mapStyles}>
                         <MapContent
                             location={location}
                             zoom={zoom}
@@ -139,7 +168,7 @@ export const MapWidget: React.FC<WidgetProps<MapWidgetConfig>> = ({
                         </MapMarker>
                     </Map>
                 ) : (
-                    <Map center={center} zoom={mapZoom} interactive={false}>
+                    <Map center={center} zoom={mapZoom} interactive={false} styles={mapStyles}>
                         <MapContent
                             location={location}
                             zoom={zoom}
