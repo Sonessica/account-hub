@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 import { EditorToolbar, useEditor, EditorFooter } from '@/bento/editor'
 import { SettingsModal } from '@/bento/editor/SettingsModal'
@@ -32,11 +32,18 @@ const EditorContent: React.FC = () => {
         reorderWidgets,
     } = useEditor()
     const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
-    // Repair legacy overlaps and position newly added cards before saving.
+    const draggingIdRef = useRef<string | null>(null)
+    const repairedOnce = useRef(false)
+
+    // Repair once after load, then only when a widget lacks x,y (new card).
+    // Never rewrite coordinates while a card is being dragged.
     useEffect(() => {
-        if (!widgets.length) return
+        if (!widgets.length || draggingIdRef.current) return
+        const missing = widgets.some((w) => typeof w.x !== 'number' || typeof w.y !== 'number')
+        if (repairedOnce.current && !missing) return
         const positioned = assignCanvasPositions(widgets)
-        if (positioned.some((widget, index) => widget.x !== widgets[index].x || widget.y !== widgets[index].y)) {
+        repairedOnce.current = true
+        if (positioned.some((w, i) => w.x !== widgets[i].x || w.y !== widgets[i].y)) {
             reorderWidgets(positioned)
         }
     }, [widgets, reorderWidgets])
@@ -51,6 +58,7 @@ const EditorContent: React.FC = () => {
             selectedWidgetId={selectedWidgetId}
             onOpenEdit={(id) => setEditingWidgetId(id || null)}
             editingWidgetId={editingWidgetId}
+            onDragStateChange={(id) => { draggingIdRef.current = id }}
         />
     )
 }

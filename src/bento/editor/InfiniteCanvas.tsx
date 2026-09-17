@@ -12,19 +12,23 @@ import { WidgetRenderer } from '@/bento/widgets'
 import { WidgetEditOverlay } from '@/bento/editor'
 import { WidgetEditorPanel } from '@/bento/editor'
 import type { WidgetConfig, WidgetSize } from '@/bento/widgets/types'
+import { WIDGET_SIZES } from '@/bento/widgets/types'
 
 const STEP = BENTO_UNIT + BENTO_GAP
 const SEARCH_COLS = 4
 const SEARCH_ROWS = 1
+const MAX_SPIRAL_RING = 48
 
 function sizeToSpan(size: WidgetSize) {
+    const meta = WIDGET_SIZES[size]
+    if (!meta) return { cols: 1, rows: 1 }
     if (size === 'bar') return { cols: 2, rows: 1 }
-    const [cols, rows] = size.split('x').map(Number)
-    return { cols: cols || 1, rows: rows || 1 }
+    return { cols: meta.cols, rows: Math.max(1, Math.round(meta.rows)) }
 }
 
 function widgetPixelSize(size: WidgetSize) {
-    if (size === 'bar') return { width: 390, height: 68 }
+    const meta = WIDGET_SIZES[size]
+    if (meta) return { width: meta.width, height: meta.height }
     const { cols, rows } = sizeToSpan(size)
     return {
         width: cols * BENTO_UNIT + (cols - 1) * BENTO_GAP,
@@ -81,6 +85,7 @@ export function findFreeDropPosition(widgets: WidgetConfig[], id: string, x: num
         }
     }
     for (const offset of spiralCells()) {
+        if (Math.max(Math.abs(offset.x), Math.abs(offset.y)) > MAX_SPIRAL_RING) break
         const targetX = x + offset.x
         const targetY = y + offset.y
         if (blockIsFree(occupied, targetX, targetY, moving.size)) return { x: targetX, y: targetY }
@@ -107,14 +112,23 @@ export function assignCanvasPositions(widgets: WidgetConfig[]): WidgetConfig[] {
             out.push(w)
             continue
         }
-        let placed: { x: number; y: number }
-        while (true) {
+        let placed: { x: number; y: number } | null = null
+        let guard = 0
+        while (guard++ < 5000) {
             const candidate = candidates.next().value!
+            if (Math.max(Math.abs(candidate.x), Math.abs(candidate.y)) > MAX_SPIRAL_RING * 2) {
+                placed = { x: index % 24 - 12, y: MAX_SPIRAL_RING + Math.floor(index / 24) }
+                reserveBlock(occupied, placed.x, placed.y, w.size)
+                break
+            }
             if (blockIsFree(occupied, candidate.x, candidate.y, w.size)) {
                 placed = candidate
                 reserveBlock(occupied, candidate.x, candidate.y, w.size)
                 break
             }
+        }
+        if (!placed) {
+            placed = { x: index % 24 - 12, y: MAX_SPIRAL_RING + Math.floor(index / 24) }
         }
         out.push({ ...w, x: placed.x, y: placed.y })
     }
@@ -139,6 +153,7 @@ type CanvasProps = {
     selectedWidgetId: string | null
     onOpenEdit: (id: string) => void
     editingWidgetId: string | null
+    onDragStateChange?: (draggingId: string | null) => void
 }
 
 export function InfiniteCanvas({
@@ -150,6 +165,7 @@ export function InfiniteCanvas({
     selectedWidgetId,
     onOpenEdit,
     editingWidgetId,
+    onDragStateChange,
 }: CanvasProps) {
     const viewportRef = useRef<HTMLDivElement>(null)
     const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -197,18 +213,24 @@ export function InfiniteCanvas({
         return () => observer.disconnect()
     }, [])
 
+    // Quantize pan for culling so we do not refilter every pointer move pixel
+    const cullPan = useMemo(() => {
+        const q = STEP / 2
+        return { x: Math.round(pan.x / q) * q, y: Math.round(pan.y / q) * q }
+    }, [pan.x, pan.y])
+
     const visibleWidgets = useMemo(() => {
         if (!viewportSize.width || !viewportSize.height) return []
         const overscan = STEP * 2
         return widgets.filter((w) => {
             if (w.id === selectedWidgetId || w.id === draggingId || w.id === editingWidgetId) return true
-            const x = (typeof w.x === 'number' ? w.x : 0) * STEP + pan.x
-            const y = (typeof w.y === 'number' ? w.y : 0) * STEP + pan.y
+            const x = (typeof w.x === 'number' ? w.x : 0) * STEP + cullPan.x
+            const y = (typeof w.y === 'number' ? w.y : 0) * STEP + cullPan.y
             const size = widgetPixelSize(w.size)
             return x + size.width >= -overscan && x <= viewportSize.width + overscan &&
                 y + size.height >= -overscan && y <= viewportSize.height + overscan
         })
-    }, [widgets, selectedWidgetId, draggingId, editingWidgetId, pan, viewportSize])
+    }, [widgets, selectedWidgetId, draggingId, editingWidgetId, cullPan, viewportSize])
 
     const onViewportPointerDown = (e: React.PointerEvent) => {
         if ((e.target as HTMLElement).closest('[data-canvas-card]')) return
@@ -231,6 +253,7 @@ export function InfiniteCanvas({
             if (!c.moved && Math.abs(dx) + Math.abs(dy) > 8) {
                 c.moved = true
                 setDraggingId(c.id)
+                onDragStateChange?.(c.id)
                 ;(viewportRef.current as HTMLElement)?.setPointerCapture(e.pointerId)
             }
             if (c.moved) {
@@ -252,6 +275,7 @@ export function InfiniteCanvas({
         panDrag.current = null
         cardDrag.current = null
         setDraggingId(null)
+        onDragStateChange?.(null)
         dragX.set(0)
         dragY.set(0)
     }

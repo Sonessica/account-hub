@@ -578,46 +578,53 @@ export const EditorProvider: React.FC<{
     // ============ Unified Widget Operations (operate on current view mode) ============
 
     const addWidget = useCallback((widget: WidgetConfig) => {
+        // External canvas: single list (desktopWidgets is source of truth)
+        if (isExternal) {
+            addDesktopWidget(widget)
+            return
+        }
         if (viewMode === 'desktop') {
             addDesktopWidget(widget)
             // Sync to mobile if mobile layout is not independent
             if (!layoutIndependent.mobile) {
-                // Add same widget to mobile with same content and layout
                 addMobileWidget(widget)
             } else {
-                // Add same widget to mobile with same content but default size
                 const contentProps = extractContentProperties(widget)
                 const mobileWidget: WidgetConfig = {
                     ...contentProps,
-                    size: '1x1', // Default size for independent mobile layout
+                    size: '1x1',
                 } as WidgetConfig
                 addMobileWidget(mobileWidget)
             }
         } else {
             addMobileWidget(widget)
-            // Sync to desktop if desktop layout is not independent
             if (!layoutIndependent.desktop) {
-                // Add same widget to desktop with same content and layout
                 addDesktopWidget(widget)
             } else {
-                // Add same widget to desktop with same content but default size
                 const contentProps = extractContentProperties(widget)
                 const desktopWidget: WidgetConfig = {
                     ...contentProps,
-                    size: '1x1', // Default size for independent desktop layout
+                    size: '1x1',
                 } as WidgetConfig
                 addDesktopWidget(desktopWidget)
             }
         }
-    }, [viewMode, addDesktopWidget, addMobileWidget, layoutIndependent])
+    }, [isExternal, viewMode, addDesktopWidget, addMobileWidget, layoutIndependent])
 
     const removeWidget = useCallback((id: string) => {
-        // Always sync removal across both views
+        if (isExternal) {
+            removeDesktopWidget(id)
+            return
+        }
         removeDesktopWidget(id)
         removeMobileWidget(id)
-    }, [removeDesktopWidget, removeMobileWidget])
+    }, [isExternal, removeDesktopWidget, removeMobileWidget])
 
     const updateWidget = useCallback((id: string, updates: Partial<WidgetConfig>) => {
+        if (isExternal) {
+            updateDesktopWidget(id, updates)
+            return
+        }
         // Separate content and layout updates
         const contentUpdates: Partial<WidgetConfig> = {}
         let hasLayoutUpdates = false
@@ -631,15 +638,11 @@ export const EditorProvider: React.FC<{
             }
         })
 
-        // Update current view
         if (viewMode === 'desktop') {
-            // Apply all updates to desktop
             updateDesktopWidget(id, updates)
-            // If layout was updated, mark desktop as independent
             if (hasLayoutUpdates) {
                 markLayoutIndependent('desktop')
             }
-            // Sync content updates to mobile (if mobile has this widget)
             if (Object.keys(contentUpdates).length > 0) {
                 const mobileWidget = mobileWidgets.find((w) => w.id === id)
                 if (mobileWidget) {
@@ -647,13 +650,10 @@ export const EditorProvider: React.FC<{
                 }
             }
         } else {
-            // Apply all updates to mobile
             updateMobileWidget(id, updates)
-            // If layout was updated, mark mobile as independent
             if (hasLayoutUpdates) {
                 markLayoutIndependent('mobile')
             }
-            // Sync content updates to desktop (if desktop has this widget)
             if (Object.keys(contentUpdates).length > 0) {
                 const desktopWidget = desktopWidgets.find((w) => w.id === id)
                 if (desktopWidget) {
@@ -661,17 +661,20 @@ export const EditorProvider: React.FC<{
                 }
             }
         }
-    }, [viewMode, updateDesktopWidget, updateMobileWidget, desktopWidgets, mobileWidgets, markLayoutIndependent])
+    }, [isExternal, viewMode, updateDesktopWidget, updateMobileWidget, desktopWidgets, mobileWidgets, markLayoutIndependent])
 
     const reorderWidgets = useCallback((newOrder: WidgetConfig[]) => {
-        // Reordering changes layout, so mark current view as independent
+        if (isExternal) {
+            reorderDesktopWidgets(newOrder)
+            return
+        }
         markLayoutIndependent(viewMode)
         if (viewMode === 'desktop') {
             reorderDesktopWidgets(newOrder)
         } else {
             reorderMobileWidgets(newOrder)
         }
-    }, [viewMode, reorderDesktopWidgets, reorderMobileWidgets, markLayoutIndependent])
+    }, [isExternal, viewMode, reorderDesktopWidgets, reorderMobileWidgets, markLayoutIndependent])
 
     // ============ Layout Sync ============
 
