@@ -16,7 +16,7 @@ function validSnapshot(value: unknown): value is EditorSnapshot {
   const okProfile = !!profile && typeof profile.name === 'string' && profile.name.length <= 200 &&
     typeof profile.description === 'string' && profile.description.length <= 5000 &&
     (profile.avatarUrl === undefined || typeof profile.avatarUrl === 'string')
-  if (!Array.isArray(data.widgets) || data.widgets.length > 500 || !okProfile) return false
+  if (!Array.isArray(data.widgets) || data.widgets.length > 10000 || !okProfile) return false
   if (data.siteSettings !== undefined) {
     const settings = data.siteSettings as Record<string, unknown>
     if (!settings || typeof settings !== 'object') return false
