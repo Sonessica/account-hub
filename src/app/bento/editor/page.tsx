@@ -59,11 +59,6 @@ const EditorContent: React.FC = () => {
             onOpenEdit={(id) => setEditingWidgetId(id || null)}
             editingWidgetId={editingWidgetId}
             onDragStateChange={(id) => { draggingIdRef.current = id }}
-            onAutoLayout={() => {
-                if (draggingIdRef.current) return
-                reorderWidgets(autoLayoutFromCenter(widgets))
-                repairedOnce.current = true
-            }}
         />
     )
 }
@@ -76,6 +71,8 @@ const HubShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         setIsEditing,
         profile,
         updateProfile,
+        widgets,
+        reorderWidgets,
     } = useEditor()
     const [showSettings, setShowSettings] = useState(false)
 
@@ -86,6 +83,10 @@ const HubShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 isEditing={isEditing}
                 onToggleEdit={() => setIsEditing(!isEditing)}
                 onOpenSettings={() => setShowSettings(true)}
+                onAutoLayout={() => {
+                    if (!isEditing || !widgets.length) return
+                    reorderWidgets(autoLayoutFromCenter(widgets))
+                }}
             />
             {showSettings && (
                 <SettingsModal

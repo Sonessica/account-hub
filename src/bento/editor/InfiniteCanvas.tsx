@@ -26,6 +26,11 @@ function sizeToSpan(size: WidgetSize) {
   return { cols: meta.cols, rows: Math.max(1, Math.round(meta.rows)) }
 }
 
+function widgetArea(size: WidgetSize) {
+  const { cols, rows } = sizeToSpan(size)
+  return cols * rows
+}
+
 function widgetPixelSize(size: WidgetSize) {
   const meta = WIDGET_SIZES[size]
   if (meta) return { width: meta.width, height: meta.height }
@@ -44,13 +49,21 @@ function searchCells(): Set<string> {
   return s
 }
 
-function* spiralCells(): Generator<{ x: number; y: number }> {
-  yield { x: 0, y: 0 }
+function* spiralCells(
+  from: { x: number; y: number } = { x: 0, y: 0 },
+  reverse = false
+): Generator<{ x: number; y: number }> {
+  const sx = from.x
+  const sy = from.y
+  yield { x: sx, y: sy }
   for (let ring = 1; ; ring++) {
-    for (let x = -ring; x <= ring; x++) yield { x, y: -ring }
-    for (let y = -ring + 1; y <= ring; y++) yield { x: ring, y }
-    for (let x = ring - 1; x >= -ring; x--) yield { x, y: ring }
-    for (let y = ring - 1; y > -ring; y--) yield { x: -ring, y }
+    const cells: { x: number; y: number }[] = []
+    for (let x = sx - ring; x <= sx + ring; x++) cells.push({ x, y: sy - ring })
+    for (let y = sy - ring + 1; y <= sy + ring; y++) cells.push({ x: sx + ring, y })
+    for (let x = sx + ring - 1; x >= sx - ring; x--) cells.push({ x, y: sy + ring })
+    for (let y = sy + ring - 1; y > sy - ring; y--) cells.push({ x: sx - ring, y })
+    if (reverse) cells.reverse()
+    for (const c of cells) yield c
   }
 }
 
@@ -71,116 +84,193 @@ function reserveBlock(occupied: Set<string>, x: number, y: number, size: WidgetS
   }
 }
 
-export function findFreeDropPosition(widgets: WidgetConfig[], id: string, x: number, y: number) {
+function occupiedExcluding(widgets: WidgetConfig[], excludeIds: Set<string>) {
   const occupied = searchCells()
-  const moving = widgets.find((widget) => widget.id === id)
-  if (!moving) return { x, y }
-  for (const widget of widgets) {
-    if (widget.id !== id && typeof widget.x === 'number' && typeof widget.y === 'number') {
-      reserveBlock(occupied, widget.x, widget.y, widget.size)
+  for (const w of widgets) {
+    if (excludeIds.has(w.id)) continue
+    if (typeof w.x === 'number' && typeof w.y === 'number') {
+      reserveBlock(occupied, w.x, w.y, w.size)
     }
   }
-  for (const offset of spiralCells()) {
-    if (Math.max(Math.abs(offset.x), Math.abs(offset.y)) > MAX_SPIRAL_RING) break
-    const targetX = x + offset.x
-    const targetY = y + offset.y
-    if (blockIsFree(occupied, targetX, targetY, moving.size)) return { x: targetX, y: targetY }
+  return occupied
+}
+
+function placeFree(
+  occupied: Set<string>,
+  size: WidgetSize,
+  origin: { x: number; y: number },
+  reverse = false,
+  skip = 0,
+) {
+  const gen = spiralCells(origin, reverse)
+  for (let i = 0; i < skip; i++) gen.next()
+  let guard = 0
+  for (const cell of gen) {
+    if (guard++ > 8000) break
+    if (Math.max(Math.abs(cell.x - origin.x), Math.abs(cell.y - origin.y)) > MAX_SPIRAL_RING * 2) break
+    if (blockIsFree(occupied, cell.x, cell.y, size)) {
+      reserveBlock(occupied, cell.x, cell.y, size)
+      return cell
+    }
   }
-  return { x, y }
+  return null
+}
+
+export function findFreeDropPosition(widgets: WidgetConfig[], id: string, x: number, y: number) {
+  const moving = widgets.find((widget) => widget.id === id)
+  if (!moving) return { x, y }
+  const occupied = occupiedExcluding(widgets, new Set([id]))
+  const placed = placeFree(occupied, moving.size, { x, y })
+  return placed || { x, y }
 }
 
 export function assignCanvasPositions(widgets: WidgetConfig[]): WidgetConfig[] {
   const occupied = searchCells()
-  const out: WidgetConfig[] = []
-  const candidates = spiralCells()
-  const fixed = new Set<number>()
-  for (const [index, w] of widgets.entries()) {
+  const pos = new Map<string, { x: number; y: number }>()
+  const pending: WidgetConfig[] = []
+
+  for (const w of widgets) {
     if (
       typeof w.x === 'number' &&
       typeof w.y === 'number' &&
       blockIsFree(occupied, w.x, w.y, w.size)
     ) {
       reserveBlock(occupied, w.x, w.y, w.size)
-      fixed.add(index)
+      pos.set(w.id, { x: w.x, y: w.y })
+    } else {
+      pending.push(w)
     }
   }
-  for (const [index, w] of widgets.entries()) {
-    if (fixed.has(index)) {
-      out.push(w)
-      continue
+
+  // Large cards first so they do not leave unusable holes
+  pending.sort((a, b) => widgetArea(b.size) - widgetArea(a.size))
+
+  let fallbackIndex = 0
+  for (const w of pending) {
+    const cell =
+      placeFree(occupied, w.size, { x: 0, y: 0 }, false, pending.length > 20 ? Math.floor(Math.random() * 4) : 0) ||
+      placeFree(occupied, w.size, { x: 0, y: 0 }, true)
+    if (cell) {
+      pos.set(w.id, cell)
+    } else {
+      const fb = { x: (fallbackIndex % 24) - 12, y: MAX_SPIRAL_RING + Math.floor(fallbackIndex / 24) }
+      fallbackIndex++
+      reserveBlock(occupied, fb.x, fb.y, w.size)
+      pos.set(w.id, fb)
     }
-    let placed: { x: number; y: number } | null = null
-    let guard = 0
-    while (guard++ < 5000) {
-      const candidate = candidates.next().value!
-      if (Math.max(Math.abs(candidate.x), Math.abs(candidate.y)) > MAX_SPIRAL_RING * 2) {
-        placed = { x: (index % 24) - 12, y: MAX_SPIRAL_RING + Math.floor(index / 24) }
-        reserveBlock(occupied, placed.x, placed.y, w.size)
-        break
-      }
-      if (blockIsFree(occupied, candidate.x, candidate.y, w.size)) {
-        placed = candidate
-        reserveBlock(occupied, candidate.x, candidate.y, w.size)
-        break
-      }
-    }
-    if (!placed) {
-      placed = { x: (index % 24) - 12, y: MAX_SPIRAL_RING + Math.floor(index / 24) }
-    }
-    out.push({ ...w, x: placed.x, y: placed.y })
   }
-  return out
+
+  return widgets.map((w) => {
+    const p = pos.get(w.id)
+    return p ? { ...w, x: p.x, y: p.y } : { ...w, x: 0, y: 2 }
+  })
 }
 
 export function autoLayoutFromCenter(widgets: WidgetConfig[]): WidgetConfig[] {
-  return assignCanvasPositions(
-    widgets.map((w) => {
-      const clone = { ...w } as WidgetConfig
-      delete (clone as { x?: number }).x
-      delete (clone as { y?: number }).y
-      return clone
-    })
-  )
+  const occupied = searchCells()
+  const origin = {
+    x: Math.floor(Math.random() * 7) - 3,
+    y: Math.floor(Math.random() * 7) - 3,
+  }
+  const reverse = Math.random() < 0.5
+
+  // Bigger cards first; shuffle within the same area for variation each click
+  const order = [...widgets].sort((a, b) => {
+    const da = widgetArea(b.size) - widgetArea(a.size)
+    return da !== 0 ? da : Math.random() - 0.5
+  })
+
+  const pos = new Map<string, { x: number; y: number }>()
+  let fallbackIndex = 0
+  for (const w of order) {
+    const cell = placeFree(occupied, w.size, origin, reverse)
+    if (cell) {
+      pos.set(w.id, cell)
+    } else {
+      const fb = { x: (fallbackIndex % 24) - 12, y: MAX_SPIRAL_RING + Math.floor(fallbackIndex / 24) }
+      fallbackIndex++
+      reserveBlock(occupied, fb.x, fb.y, w.size)
+      pos.set(w.id, fb)
+    }
+  }
+
+  return widgets.map((w) => {
+    const p = pos.get(w.id)
+    return { ...w, x: p!.x, y: p!.y }
+  })
 }
 
-export function resolveDropTarget(widgets: WidgetConfig[], id: string, x: number, y: number) {
+export type DropPlan =
+  | { type: 'free'; x: number; y: number }
+  | { type: 'swap'; swapId: string; x: number; y: number }
+  | { type: 'push'; otherId: string; x: number; y: number; otherTo: { x: number; y: number } }
+
+export function resolveDropTarget(widgets: WidgetConfig[], id: string, dropX: number, dropY: number): DropPlan {
   const moving = widgets.find((w) => w.id === id)
-  if (!moving) return { type: 'free' as const, x, y }
+  if (!moving) return { type: 'free', x: dropX, y: dropY }
   const span = sizeToSpan(moving.size)
   const search = searchCells()
-  const ownerAt = new Map<string, string>()
+
+  let dropHitsSearch = false
+  for (let dx = 0; dx < span.cols; dx++) {
+    for (let dy = 0; dy < span.rows; dy++) {
+      if (search.has(`${dropX + dx},${dropY + dy}`)) dropHitsSearch = true
+    }
+  }
+
+  const votes = new Map<string, number>()
   for (const w of widgets) {
     if (w.id === id) continue
     const wx = typeof w.x === 'number' ? w.x : 0
     const wy = typeof w.y === 'number' ? w.y : 0
     const s = sizeToSpan(w.size)
-    for (let dx = 0; dx < s.cols; dx++) {
-      for (let dy = 0; dy < s.rows; dy++) ownerAt.set(`${wx + dx},${wy + dy}`, w.id)
+    let hits = 0
+    for (let dx = 0; dx < span.cols; dx++) {
+      for (let dy = 0; dy < span.rows; dy++) {
+        const cx = dropX + dx
+        const cy = dropY + dy
+        if (search.has(`${cx},${cy}`)) continue
+        if (cx >= wx && cx < wx + s.cols && cy >= wy && cy < wy + s.rows) hits++
+      }
+    }
+    if (hits > 0) votes.set(w.id, (votes.get(w.id) || 0) + hits)
+  }
+
+  if (votes.size === 0) {
+    if (!dropHitsSearch) return { type: 'free', x: dropX, y: dropY }
+    return { type: 'free', ...findFreeDropPosition(widgets, id, dropX, dropY) }
+  }
+
+  const otherId = [...votes.entries()].sort((a, b) => b[1] - a[1])[0][0]
+  const other = widgets.find((w) => w.id === otherId)!
+  const otherPos = {
+    x: typeof other.x === 'number' ? other.x : 0,
+    y: typeof other.y === 'number' ? other.y : 0,
+  }
+  const orig = {
+    x: typeof moving.x === 'number' ? moving.x : 0,
+    y: typeof moving.y === 'number' ? moving.y : 0,
+  }
+
+  // Swap only when each multi-cell block still fits at the other origin
+  const excludeBoth = new Set([id, otherId])
+  const swapOk =
+    blockIsFree(occupiedExcluding(widgets, excludeBoth), otherPos.x, otherPos.y, moving.size) &&
+    blockIsFree(occupiedExcluding(widgets, excludeBoth), orig.x, orig.y, other.size)
+
+  if (swapOk && !dropHitsSearch) {
+    return { type: 'swap', swapId: otherId, x: otherPos.x, y: otherPos.y }
+  }
+
+  // Push: relocate the overlapped card, then take the drop cell (if legal)
+  if (!dropHitsSearch && blockIsFree(occupiedExcluding(widgets, excludeBoth), dropX, dropY, moving.size)) {
+    const otherTo = placeFree(occupiedExcluding(widgets, excludeBoth), other.size, otherPos)
+    if (otherTo) {
+      return { type: 'push', otherId, x: dropX, y: dropY, otherTo }
     }
   }
-  const votes = new Map<string, number>()
-  let hitsSearch = false
-  for (let dx = 0; dx < span.cols; dx++) {
-    for (let dy = 0; dy < span.rows; dy++) {
-      const key = `${x + dx},${y + dy}`
-      if (search.has(key)) hitsSearch = true
-      const oid = ownerAt.get(key)
-      if (oid) votes.set(oid, (votes.get(oid) || 0) + 1)
-    }
-  }
-  if (votes.size > 0) {
-    const ranked = [...votes.entries()].sort((a, b) => b[1] - a[1])
-    const swapId = ranked[0][0]
-    const other = widgets.find((w) => w.id === swapId)
-    return {
-      type: 'swap' as const,
-      swapId,
-      x: other && typeof other.x === 'number' ? other.x : x,
-      y: other && typeof other.y === 'number' ? other.y : y,
-    }
-  }
-  if (!hitsSearch) return { type: 'free' as const, x, y }
-  return { type: 'free' as const, ...findFreeDropPosition(widgets, id, x, y) }
+
+  return { type: 'free', ...findFreeDropPosition(widgets, id, dropX, dropY) }
 }
 
 function matchesQuery(w: WidgetConfig, q: string) {
@@ -333,6 +423,9 @@ export function InfiniteCanvas({
       if (drop.type === 'swap') {
         onUpdateWidget(c.id, { x: drop.x, y: drop.y })
         onUpdateWidget(drop.swapId, { x: c.origX, y: c.origY })
+      } else if (drop.type === 'push') {
+        onUpdateWidget(drop.otherId, { x: drop.otherTo.x, y: drop.otherTo.y })
+        onUpdateWidget(c.id, { x: drop.x, y: drop.y })
       } else {
         onUpdateWidget(c.id, { x: drop.x, y: drop.y })
       }
@@ -485,17 +578,7 @@ export function InfiniteCanvas({
         })}
       </div>
 
-      {onAutoLayout && (
-        <button
-          type="button"
-          data-canvas-chrome
-          onClick={onAutoLayout}
-          className="fixed bottom-20 right-4 z-[90] rounded-full bg-white/95 px-4 py-2.5 text-[13px] font-semibold text-black shadow-lg ring-1 ring-black/5 backdrop-blur-md transition hover:bg-white"
-          style={{ fontFamily: 'Inter, -apple-system, sans-serif' }}
-        >
-          自动布局
-        </button>
-      )}
+      {onAutoLayout && null}
 
       {lightbox && (
         <div
