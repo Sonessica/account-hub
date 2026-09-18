@@ -354,35 +354,6 @@ export function InfiniteCanvas({
               transition={{ type: 'spring', stiffness: 320, damping: 18, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* cute floating sparkles */}
-              {['#FF8FAB', '#FFD66B', '#7DD3FC', '#C4B5FD', '#6EE7B7'].map((color, i) => (
-                <motion.span
-                  key={color}
-                  aria-hidden
-                  className="pointer-events-none absolute rounded-full"
-                  style={{
-                    width: 8 + (i % 3) * 4,
-                    height: 8 + (i % 3) * 4,
-                    background: color,
-                    left: `${8 + i * 20}%`,
-                    top: `${-6 - (i % 2) * 8}%`,
-                  }}
-                  initial={{ opacity: 0, y: 16, scale: 0.4 }}
-                  animate={{
-                    opacity: [0, 1, 0.85],
-                    y: [-4, -22, -10],
-                    scale: [0.4, 1.15, 0.95],
-                  }}
-                  transition={{
-                    duration: 1.4,
-                    delay: 0.08 * i,
-                    repeat: Infinity,
-                    repeatType: 'mirror',
-                    ease: 'easeInOut',
-                  }}
-                />
-              ))}
-
               {lightbox.title && (
                 <motion.div
                   className="mb-3 text-center text-sm font-medium text-white/90"
