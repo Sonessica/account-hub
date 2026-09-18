@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { motion, useMotionValue, useSpring } from 'framer-motion'
+import { AnimatePresence, motion, useMotionValue, useSpring } from 'framer-motion'
 import { BENTO_GAP, BENTO_UNIT } from '@/bento/core/BentoSizeMap'
 import { WidgetRenderer } from '@/bento/widgets'
 import { WidgetEditOverlay } from '@/bento/editor'
@@ -335,32 +335,92 @@ export function InfiniteCanvas({
 
       {onAutoLayout && null}
 
-      {lightbox && (
-        <div
-          data-canvas-chrome
-          className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 p-6"
-          onClick={() => setLightbox(null)}
-        >
-          <div className="relative max-h-full max-w-5xl">
-            {lightbox.title && (
-              <div className="mb-3 text-center text-sm text-white/80">{lightbox.title}</div>
-            )}
-            <img
-              src={lightbox.src}
-              alt={lightbox.title || ''}
-              className="max-h-[80vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
-            />
-            <button
-              type="button"
-              className="absolute -right-2 -top-10 text-2xl text-white/80 hover:text-white"
-              onClick={() => setLightbox(null)}
-              aria-label="close"
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            data-canvas-chrome
+            className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            onClick={() => setLightbox(null)}
+          >
+            <motion.div
+              className="relative max-h-full max-w-5xl"
+              initial={{ scale: 0.72, opacity: 0, y: 28 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.86, opacity: 0, y: 12 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 18, mass: 0.7 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              x
-            </button>
-          </div>
-        </div>
-      )}
+              {/* cute floating sparkles */}
+              {['#FF8FAB', '#FFD66B', '#7DD3FC', '#C4B5FD', '#6EE7B7'].map((color, i) => (
+                <motion.span
+                  key={color}
+                  aria-hidden
+                  className="pointer-events-none absolute rounded-full"
+                  style={{
+                    width: 8 + (i % 3) * 4,
+                    height: 8 + (i % 3) * 4,
+                    background: color,
+                    left: `${8 + i * 20}%`,
+                    top: `${-6 - (i % 2) * 8}%`,
+                  }}
+                  initial={{ opacity: 0, y: 16, scale: 0.4 }}
+                  animate={{
+                    opacity: [0, 1, 0.85],
+                    y: [-4, -22, -10],
+                    scale: [0.4, 1.15, 0.95],
+                  }}
+                  transition={{
+                    duration: 1.4,
+                    delay: 0.08 * i,
+                    repeat: Infinity,
+                    repeatType: 'mirror',
+                    ease: 'easeInOut',
+                  }}
+                />
+              ))}
+
+              {lightbox.title && (
+                <motion.div
+                  className="mb-3 text-center text-sm font-medium text-white/90"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, type: 'spring', stiffness: 260, damping: 20 }}
+                >
+                  {lightbox.title}
+                </motion.div>
+              )}
+
+              <motion.img
+                src={lightbox.src}
+                alt={lightbox.title || ''}
+                className="max-h-[80vh] w-auto max-w-full rounded-[28px] object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 16 }}
+              />
+
+              <motion.button
+                type="button"
+                className="absolute -right-2 -top-10 grid size-9 place-items-center rounded-full bg-white/15 text-lg font-bold text-white transition hover:bg-white/30"
+                onClick={() => setLightbox(null)}
+                aria-label="close"
+                initial={{ opacity: 0, scale: 0.5, rotate: -30 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 18, delay: 0.08 }}
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+              >
+                x
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {isEditing && editingWidget && (
         <WidgetEditorPanel
