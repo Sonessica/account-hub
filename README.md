@@ -1,6 +1,7 @@
 # Account Hub
 
 基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的自托管个人 Bento 页面。当前产品是**单页、共享数据**的版本：访客和编辑者访问同一个画布，卡片、个人资料与站点设置保存在 NAS 的 SQLite 中，而非浏览器本地或 Supabase。
+<img width="3840" height="1907" alt="image" src="https://github.com/user-attachments/assets/1803e637-843a-487f-8f68-24904eb4971e" />
 
 ## 当前功能
 
