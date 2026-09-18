@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 
 import { EditorToolbar, useEditor, EditorFooter } from '@/bento/editor'
 import { SettingsModal } from '@/bento/editor/SettingsModal'
-import { InfiniteCanvas, assignCanvasPositions } from '@/bento/editor/InfiniteCanvas'
+import { InfiniteCanvas, assignCanvasPositions, autoLayoutFromCenter } from '@/bento/editor/InfiniteCanvas'
 import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
 
 // ============ Editor View Wrapper ============
@@ -59,6 +59,11 @@ const EditorContent: React.FC = () => {
             onOpenEdit={(id) => setEditingWidgetId(id || null)}
             editingWidgetId={editingWidgetId}
             onDragStateChange={(id) => { draggingIdRef.current = id }}
+            onAutoLayout={() => {
+                if (draggingIdRef.current) return
+                reorderWidgets(autoLayoutFromCenter(widgets))
+                repairedOnce.current = true
+            }}
         />
     )
 }

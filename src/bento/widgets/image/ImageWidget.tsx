@@ -21,7 +21,7 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     const hasOverlay = title || subtitle
 
     return (
-        <BentoCard size={size} clickable={!isEditing}>
+        <BentoCard size={size} disableHover style={{ pointerEvents: 'none' }}>
             <BentoCard.Image src={src} alt={alt || title || ''} />
 
             {hasOverlay && (
