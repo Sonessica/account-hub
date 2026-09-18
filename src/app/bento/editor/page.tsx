@@ -59,6 +59,11 @@ const EditorContent: React.FC = () => {
             onOpenEdit={(id) => setEditingWidgetId(id || null)}
             editingWidgetId={editingWidgetId}
             onDragStateChange={(id) => { draggingIdRef.current = id }}
+            onWidgetsChange={(next) => {
+                draggingIdRef.current = null
+                repairedOnce.current = true
+                reorderWidgets(next)
+            }}
         />
     )
 }

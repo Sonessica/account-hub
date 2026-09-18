@@ -169,12 +169,13 @@ export function assignCanvasPositions(widgets: WidgetConfig[]): WidgetConfig[] {
 export function autoLayoutFromCenter(widgets: WidgetConfig[]): WidgetConfig[] {
   const occupied = searchCells()
   const origin = {
-    x: Math.floor(Math.random() * 7) - 3,
-    y: Math.floor(Math.random() * 7) - 3,
+    x: Math.floor(Math.random() * 13) - 6,
+    y: Math.floor(Math.random() * 13) - 6,
   }
   const reverse = Math.random() < 0.5
+  const phase = Math.floor(Math.random() * 8)
 
-  // Bigger cards first; shuffle within the same area for variation each click
+  // Larger first for tighter packing; shuffle equals for variety
   const order = [...widgets].sort((a, b) => {
     const da = widgetArea(b.size) - widgetArea(a.size)
     return da !== 0 ? da : Math.random() - 0.5
@@ -182,21 +183,26 @@ export function autoLayoutFromCenter(widgets: WidgetConfig[]): WidgetConfig[] {
 
   const pos = new Map<string, { x: number; y: number }>()
   let fallbackIndex = 0
-  for (const w of order) {
-    const cell = placeFree(occupied, w.size, origin, reverse)
+  order.forEach((w, index) => {
+    // Slight per-card phase so two clicks with same origin still differ
+    const skip = (phase + index) % 5
+    const cell = placeFree(occupied, w.size, origin, reverse, skip)
     if (cell) {
       pos.set(w.id, cell)
     } else {
-      const fb = { x: (fallbackIndex % 24) - 12, y: MAX_SPIRAL_RING + Math.floor(fallbackIndex / 24) }
+      const fb = {
+        x: (fallbackIndex % 24) - 12,
+        y: MAX_SPIRAL_RING + Math.floor(fallbackIndex / 24),
+      }
       fallbackIndex++
       reserveBlock(occupied, fb.x, fb.y, w.size)
       pos.set(w.id, fb)
     }
-  }
+  })
 
   return widgets.map((w) => {
-    const p = pos.get(w.id)
-    return { ...w, x: p!.x, y: p!.y }
+    const p = pos.get(w.id)!
+    return { ...w, x: p.x, y: p.y }
   })
 }
 
@@ -204,6 +210,29 @@ export type DropPlan =
   | { type: 'free'; x: number; y: number }
   | { type: 'swap'; swapId: string; x: number; y: number }
   | { type: 'push'; otherId: string; x: number; y: number; otherTo: { x: number; y: number } }
+  | { type: 'pushMany'; x: number; y: number; moves: { id: string; x: number; y: number }[] }
+
+function blocksOverlap(
+  dropX: number,
+  dropY: number,
+  span: { cols: number; rows: number },
+  w: WidgetConfig,
+  search: Set<string>
+) {
+  const wx = typeof w.x === 'number' ? w.x : 0
+  const wy = typeof w.y === 'number' ? w.y : 0
+  const s = sizeToSpan(w.size)
+  let hits = 0
+  for (let dx = 0; dx < span.cols; dx++) {
+    for (let dy = 0; dy < span.rows; dy++) {
+      const cx = dropX + dx
+      const cy = dropY + dy
+      if (search.has(`${cx},${cy}`)) continue
+      if (cx >= wx && cx < wx + s.cols && cy >= wy && cy < wy + s.rows) hits++
+    }
+  }
+  return hits > 0
+}
 
 export function resolveDropTarget(widgets: WidgetConfig[], id: string, dropX: number, dropY: number): DropPlan {
   const moving = widgets.find((w) => w.id === id)
@@ -218,55 +247,87 @@ export function resolveDropTarget(widgets: WidgetConfig[], id: string, dropX: nu
     }
   }
 
-  const votes = new Map<string, number>()
-  for (const w of widgets) {
-    if (w.id === id) continue
-    const wx = typeof w.x === 'number' ? w.x : 0
-    const wy = typeof w.y === 'number' ? w.y : 0
-    const s = sizeToSpan(w.size)
-    let hits = 0
-    for (let dx = 0; dx < span.cols; dx++) {
-      for (let dy = 0; dy < span.rows; dy++) {
-        const cx = dropX + dx
-        const cy = dropY + dy
-        if (search.has(`${cx},${cy}`)) continue
-        if (cx >= wx && cx < wx + s.cols && cy >= wy && cy < wy + s.rows) hits++
-      }
-    }
-    if (hits > 0) votes.set(w.id, (votes.get(w.id) || 0) + hits)
+  // All cards overlapping the drop footprint
+  const blockers = widgets.filter(
+    (w) => w.id !== id && blocksOverlap(dropX, dropY, span, w, search)
+  )
+
+  if (!dropHitsSearch && blockers.length === 0) {
+    return { type: 'free', x: dropX, y: dropY }
   }
 
-  if (votes.size === 0) {
-    if (!dropHitsSearch) return { type: 'free', x: dropX, y: dropY }
-    return { type: 'free', ...findFreeDropPosition(widgets, id, dropX, dropY) }
-  }
-
-  const otherId = [...votes.entries()].sort((a, b) => b[1] - a[1])[0][0]
-  const other = widgets.find((w) => w.id === otherId)!
-  const otherPos = {
-    x: typeof other.x === 'number' ? other.x : 0,
-    y: typeof other.y === 'number' ? other.y : 0,
-  }
   const orig = {
     x: typeof moving.x === 'number' ? moving.x : 0,
     y: typeof moving.y === 'number' ? moving.y : 0,
   }
 
-  // Swap only when each multi-cell block still fits at the other origin
-  const excludeBoth = new Set([id, otherId])
-  const swapOk =
-    blockIsFree(occupiedExcluding(widgets, excludeBoth), otherPos.x, otherPos.y, moving.size) &&
-    blockIsFree(occupiedExcluding(widgets, excludeBoth), orig.x, orig.y, other.size)
+  if (!dropHitsSearch && blockers.length > 0) {
+    // 1) Prefer swap with the largest overlapped card when both blocks fit
+    const primary = [...blockers].sort(
+      (a, b) => widgetArea(b.size) - widgetArea(a.size)
+    )[0]
+    const otherPos = {
+      x: typeof primary.x === 'number' ? primary.x : 0,
+      y: typeof primary.y === 'number' ? primary.y : 0,
+    }
+    const excludeBoth = new Set([id, primary.id])
+    const occupiedSwap = occupiedExcluding(widgets, excludeBoth)
+    const swapOk =
+      blockIsFree(occupiedSwap, otherPos.x, otherPos.y, moving.size) &&
+      blockIsFree(occupiedSwap, orig.x, orig.y, primary.size)
+    // Only swap when it clears every blocker (swap target does not overlap others)
+    if (swapOk) {
+      const stillOverlap = widgets.some(
+        (w) =>
+          w.id !== id &&
+          w.id !== primary.id &&
+          blocksOverlap(otherPos.x, otherPos.y, span, w, search)
+      )
+      if (!stillOverlap) {
+        return { type: 'swap', swapId: primary.id, x: otherPos.x, y: otherPos.y }
+      }
+    }
 
-  if (swapOk && !dropHitsSearch) {
-    return { type: 'swap', swapId: otherId, x: otherPos.x, y: otherPos.y }
-  }
-
-  // Push: relocate the overlapped card, then take the drop cell (if legal)
-  if (!dropHitsSearch && blockIsFree(occupiedExcluding(widgets, excludeBoth), dropX, dropY, moving.size)) {
-    const otherTo = placeFree(occupiedExcluding(widgets, excludeBoth), other.size, otherPos)
-    if (otherTo) {
-      return { type: 'push', otherId, x: dropX, y: dropY, otherTo }
+    // 2) Push every blocker out of the drop footprint, then take the drop cell
+    const base = occupiedExcluding(widgets, new Set([id, ...blockers.map((b) => b.id)]))
+    if (blockIsFree(base, dropX, dropY, moving.size)) {
+      const occupied = new Set(base)
+      reserveBlock(occupied, dropX, dropY, moving.size)
+      const moves: { id: string; x: number; y: number }[] = []
+      let ok = true
+      for (const b of blockers) {
+        const bx = typeof b.x === 'number' ? b.x : 0
+        const by = typeof b.y === 'number' ? b.y : 0
+        const cell = placeFree(occupied, b.size, { x: bx, y: by })
+        if (!cell) {
+          ok = false
+          break
+        }
+        moves.push({ id: b.id, x: cell.x, y: cell.y })
+      }
+      if (ok && moves.length) {
+        return { type: 'pushMany', x: dropX, y: dropY, moves }
+      }
+      // Single-blocker fallback: classic push
+      if (ok && moves.length === 0 && blockers.length === 1) {
+        const otherTo = placeFree(
+          occupiedExcluding(widgets, new Set([id, blockers[0].id])),
+          blockers[0].size,
+          {
+            x: typeof blockers[0].x === 'number' ? blockers[0].x : 0,
+            y: typeof blockers[0].y === 'number' ? blockers[0].y : 0,
+          }
+        )
+        if (otherTo) {
+          return {
+            type: 'push',
+            otherId: blockers[0].id,
+            x: dropX,
+            y: dropY,
+            otherTo,
+          }
+        }
+      }
     }
   }
 
@@ -299,6 +360,7 @@ type CanvasProps = {
   editingWidgetId: string | null
   onDragStateChange?: (draggingId: string | null) => void
   onAutoLayout?: () => void
+  onWidgetsChange?: (widgets: WidgetConfig[]) => void
 }
 
 export function InfiniteCanvas({
@@ -312,6 +374,7 @@ export function InfiniteCanvas({
   editingWidgetId,
   onDragStateChange,
   onAutoLayout,
+  onWidgetsChange,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -420,13 +483,25 @@ export function InfiniteCanvas({
       const cellX = Math.round((c.origX * STEP + dx) / STEP)
       const cellY = Math.round((c.origY * STEP + dy) / STEP)
       const drop = resolveDropTarget(widgets, c.id, cellX, cellY)
-      if (drop.type === 'swap') {
-        onUpdateWidget(c.id, { x: drop.x, y: drop.y })
-        onUpdateWidget(drop.swapId, { x: c.origX, y: c.origY })
-      } else if (drop.type === 'push') {
-        onUpdateWidget(drop.otherId, { x: drop.otherTo.x, y: drop.otherTo.y })
-        onUpdateWidget(c.id, { x: drop.x, y: drop.y })
-      } else {
+
+      // Atomic multi-card update
+      if (drop.type === 'swap' || drop.type === 'push' || drop.type === 'pushMany') {
+        const moveMap = new Map<string, { x: number; y: number }>()
+        moveMap.set(c.id, { x: drop.x, y: drop.y })
+        if (drop.type === 'swap') moveMap.set(drop.swapId, { x: c.origX, y: c.origY })
+        if (drop.type === 'push') moveMap.set(drop.otherId, { x: drop.otherTo.x, y: drop.otherTo.y })
+        if (drop.type === 'pushMany') {
+          for (const m of drop.moves) moveMap.set(m.id, { x: m.x, y: m.y })
+        }
+        const next = widgets.map((w) => {
+          const p = moveMap.get(w.id)
+          return p ? { ...w, x: p.x, y: p.y } : w
+        })
+        if (onWidgetsChange) onWidgetsChange(next)
+        else {
+          for (const [wid, p] of moveMap) onUpdateWidget(wid, p)
+        }
+      } else if (drop.x !== c.origX || drop.y !== c.origY) {
         onUpdateWidget(c.id, { x: drop.x, y: drop.y })
       }
     }
