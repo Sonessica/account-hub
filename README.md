@@ -58,6 +58,7 @@ npm run dev
 ```bash
 npm run typecheck
 npm run lint
+npm run test:canvas
 npm run build
 ```
 

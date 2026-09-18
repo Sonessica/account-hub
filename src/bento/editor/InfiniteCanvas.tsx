@@ -2,7 +2,7 @@
 
 /**
  * Infinite bento canvas centered on a 1x4 search pill.
- * Pan freely; cards snap; drop on a card swaps positions.
+ * Pan freely; full-footprint placement handles swaps and multi-card pushes.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -13,326 +13,17 @@ import { WidgetEditOverlay } from '@/bento/editor'
 import { WidgetEditorPanel } from '@/bento/editor'
 import type { WidgetConfig, WidgetSize } from '@/bento/widgets/types'
 import { WIDGET_SIZES } from '@/bento/widgets/types'
+import { resolveCanvasDrop, SEARCH_COLS, SEARCH_ROWS } from './canvasPlacement'
 
 const STEP = BENTO_UNIT + BENTO_GAP
-const SEARCH_COLS = 4
-const SEARCH_ROWS = 1
-const MAX_SPIRAL_RING = 48
-
-function sizeToSpan(size: WidgetSize) {
-  const meta = WIDGET_SIZES[size]
-  if (!meta) return { cols: 1, rows: 1 }
-  if (size === 'bar') return { cols: 2, rows: 1 }
-  return { cols: meta.cols, rows: Math.max(1, Math.round(meta.rows)) }
-}
-
-function widgetArea(size: WidgetSize) {
-  const { cols, rows } = sizeToSpan(size)
-  return cols * rows
-}
 
 function widgetPixelSize(size: WidgetSize) {
   const meta = WIDGET_SIZES[size]
   if (meta) return { width: meta.width, height: meta.height }
-  const { cols, rows } = sizeToSpan(size)
-  return {
-    width: cols * BENTO_UNIT + (cols - 1) * BENTO_GAP,
-    height: rows * BENTO_UNIT + (rows - 1) * BENTO_GAP,
-  }
+  return { width: BENTO_UNIT, height: BENTO_UNIT }
 }
 
-function searchCells(): Set<string> {
-  const s = new Set<string>()
-  for (let dx = 0; dx < SEARCH_COLS; dx++) {
-    for (let dy = 0; dy < SEARCH_ROWS; dy++) s.add(`${dx},${dy}`)
-  }
-  return s
-}
-
-function* spiralCells(
-  from: { x: number; y: number } = { x: 0, y: 0 },
-  reverse = false
-): Generator<{ x: number; y: number }> {
-  const sx = from.x
-  const sy = from.y
-  yield { x: sx, y: sy }
-  for (let ring = 1; ; ring++) {
-    const cells: { x: number; y: number }[] = []
-    for (let x = sx - ring; x <= sx + ring; x++) cells.push({ x, y: sy - ring })
-    for (let y = sy - ring + 1; y <= sy + ring; y++) cells.push({ x: sx + ring, y })
-    for (let x = sx + ring - 1; x >= sx - ring; x--) cells.push({ x, y: sy + ring })
-    for (let y = sy + ring - 1; y > sy - ring; y--) cells.push({ x: sx - ring, y })
-    if (reverse) cells.reverse()
-    for (const c of cells) yield c
-  }
-}
-
-function blockIsFree(occupied: Set<string>, x: number, y: number, size: WidgetSize) {
-  const { cols, rows } = sizeToSpan(size)
-  for (let dx = 0; dx < cols; dx++) {
-    for (let dy = 0; dy < rows; dy++) {
-      if (occupied.has(`${x + dx},${y + dy}`)) return false
-    }
-  }
-  return true
-}
-
-function reserveBlock(occupied: Set<string>, x: number, y: number, size: WidgetSize) {
-  const { cols, rows } = sizeToSpan(size)
-  for (let dx = 0; dx < cols; dx++) {
-    for (let dy = 0; dy < rows; dy++) occupied.add(`${x + dx},${y + dy}`)
-  }
-}
-
-function occupiedExcluding(widgets: WidgetConfig[], excludeIds: Set<string>) {
-  const occupied = searchCells()
-  for (const w of widgets) {
-    if (excludeIds.has(w.id)) continue
-    if (typeof w.x === 'number' && typeof w.y === 'number') {
-      reserveBlock(occupied, w.x, w.y, w.size)
-    }
-  }
-  return occupied
-}
-
-function placeFree(
-  occupied: Set<string>,
-  size: WidgetSize,
-  origin: { x: number; y: number },
-  reverse = false,
-  skip = 0,
-) {
-  const gen = spiralCells(origin, reverse)
-  for (let i = 0; i < skip; i++) gen.next()
-  let guard = 0
-  for (const cell of gen) {
-    if (guard++ > 8000) break
-    if (Math.max(Math.abs(cell.x - origin.x), Math.abs(cell.y - origin.y)) > MAX_SPIRAL_RING * 2) break
-    if (blockIsFree(occupied, cell.x, cell.y, size)) {
-      reserveBlock(occupied, cell.x, cell.y, size)
-      return cell
-    }
-  }
-  return null
-}
-
-export function findFreeDropPosition(widgets: WidgetConfig[], id: string, x: number, y: number) {
-  const moving = widgets.find((widget) => widget.id === id)
-  if (!moving) return { x, y }
-  const occupied = occupiedExcluding(widgets, new Set([id]))
-  const placed = placeFree(occupied, moving.size, { x, y })
-  return placed || { x, y }
-}
-
-export function assignCanvasPositions(widgets: WidgetConfig[]): WidgetConfig[] {
-  const occupied = searchCells()
-  const pos = new Map<string, { x: number; y: number }>()
-  const pending: WidgetConfig[] = []
-
-  for (const w of widgets) {
-    if (
-      typeof w.x === 'number' &&
-      typeof w.y === 'number' &&
-      blockIsFree(occupied, w.x, w.y, w.size)
-    ) {
-      reserveBlock(occupied, w.x, w.y, w.size)
-      pos.set(w.id, { x: w.x, y: w.y })
-    } else {
-      pending.push(w)
-    }
-  }
-
-  // Large cards first so they do not leave unusable holes
-  pending.sort((a, b) => widgetArea(b.size) - widgetArea(a.size))
-
-  let fallbackIndex = 0
-  for (const w of pending) {
-    const cell =
-      placeFree(occupied, w.size, { x: 0, y: 0 }, false, pending.length > 20 ? Math.floor(Math.random() * 4) : 0) ||
-      placeFree(occupied, w.size, { x: 0, y: 0 }, true)
-    if (cell) {
-      pos.set(w.id, cell)
-    } else {
-      const fb = { x: (fallbackIndex % 24) - 12, y: MAX_SPIRAL_RING + Math.floor(fallbackIndex / 24) }
-      fallbackIndex++
-      reserveBlock(occupied, fb.x, fb.y, w.size)
-      pos.set(w.id, fb)
-    }
-  }
-
-  return widgets.map((w) => {
-    const p = pos.get(w.id)
-    return p ? { ...w, x: p.x, y: p.y } : { ...w, x: 0, y: 2 }
-  })
-}
-
-export function autoLayoutFromCenter(widgets: WidgetConfig[]): WidgetConfig[] {
-  const occupied = searchCells()
-  const origin = {
-    x: Math.floor(Math.random() * 13) - 6,
-    y: Math.floor(Math.random() * 13) - 6,
-  }
-  const reverse = Math.random() < 0.5
-  const phase = Math.floor(Math.random() * 8)
-
-  // Larger first for tighter packing; shuffle equals for variety
-  const order = [...widgets].sort((a, b) => {
-    const da = widgetArea(b.size) - widgetArea(a.size)
-    return da !== 0 ? da : Math.random() - 0.5
-  })
-
-  const pos = new Map<string, { x: number; y: number }>()
-  let fallbackIndex = 0
-  order.forEach((w, index) => {
-    // Slight per-card phase so two clicks with same origin still differ
-    const skip = (phase + index) % 5
-    const cell = placeFree(occupied, w.size, origin, reverse, skip)
-    if (cell) {
-      pos.set(w.id, cell)
-    } else {
-      const fb = {
-        x: (fallbackIndex % 24) - 12,
-        y: MAX_SPIRAL_RING + Math.floor(fallbackIndex / 24),
-      }
-      fallbackIndex++
-      reserveBlock(occupied, fb.x, fb.y, w.size)
-      pos.set(w.id, fb)
-    }
-  })
-
-  return widgets.map((w) => {
-    const p = pos.get(w.id)!
-    return { ...w, x: p.x, y: p.y }
-  })
-}
-
-export type DropPlan =
-  | { type: 'free'; x: number; y: number }
-  | { type: 'swap'; swapId: string; x: number; y: number }
-  | { type: 'push'; otherId: string; x: number; y: number; otherTo: { x: number; y: number } }
-  | { type: 'pushMany'; x: number; y: number; moves: { id: string; x: number; y: number }[] }
-
-function blocksOverlap(
-  dropX: number,
-  dropY: number,
-  span: { cols: number; rows: number },
-  w: WidgetConfig,
-  search: Set<string>
-) {
-  const wx = typeof w.x === 'number' ? w.x : 0
-  const wy = typeof w.y === 'number' ? w.y : 0
-  const s = sizeToSpan(w.size)
-  let hits = 0
-  for (let dx = 0; dx < span.cols; dx++) {
-    for (let dy = 0; dy < span.rows; dy++) {
-      const cx = dropX + dx
-      const cy = dropY + dy
-      if (search.has(`${cx},${cy}`)) continue
-      if (cx >= wx && cx < wx + s.cols && cy >= wy && cy < wy + s.rows) hits++
-    }
-  }
-  return hits > 0
-}
-
-export function resolveDropTarget(widgets: WidgetConfig[], id: string, dropX: number, dropY: number): DropPlan {
-  const moving = widgets.find((w) => w.id === id)
-  if (!moving) return { type: 'free', x: dropX, y: dropY }
-  const span = sizeToSpan(moving.size)
-  const search = searchCells()
-
-  let dropHitsSearch = false
-  for (let dx = 0; dx < span.cols; dx++) {
-    for (let dy = 0; dy < span.rows; dy++) {
-      if (search.has(`${dropX + dx},${dropY + dy}`)) dropHitsSearch = true
-    }
-  }
-
-  // All cards overlapping the drop footprint
-  const blockers = widgets.filter(
-    (w) => w.id !== id && blocksOverlap(dropX, dropY, span, w, search)
-  )
-
-  if (!dropHitsSearch && blockers.length === 0) {
-    return { type: 'free', x: dropX, y: dropY }
-  }
-
-  const orig = {
-    x: typeof moving.x === 'number' ? moving.x : 0,
-    y: typeof moving.y === 'number' ? moving.y : 0,
-  }
-
-  if (!dropHitsSearch && blockers.length > 0) {
-    // 1) Prefer swap with the largest overlapped card when both blocks fit
-    const primary = [...blockers].sort(
-      (a, b) => widgetArea(b.size) - widgetArea(a.size)
-    )[0]
-    const otherPos = {
-      x: typeof primary.x === 'number' ? primary.x : 0,
-      y: typeof primary.y === 'number' ? primary.y : 0,
-    }
-    const excludeBoth = new Set([id, primary.id])
-    const occupiedSwap = occupiedExcluding(widgets, excludeBoth)
-    const swapOk =
-      blockIsFree(occupiedSwap, otherPos.x, otherPos.y, moving.size) &&
-      blockIsFree(occupiedSwap, orig.x, orig.y, primary.size)
-    // Only swap when it clears every blocker (swap target does not overlap others)
-    if (swapOk) {
-      const stillOverlap = widgets.some(
-        (w) =>
-          w.id !== id &&
-          w.id !== primary.id &&
-          blocksOverlap(otherPos.x, otherPos.y, span, w, search)
-      )
-      if (!stillOverlap) {
-        return { type: 'swap', swapId: primary.id, x: otherPos.x, y: otherPos.y }
-      }
-    }
-
-    // 2) Push every blocker out of the drop footprint, then take the drop cell
-    const base = occupiedExcluding(widgets, new Set([id, ...blockers.map((b) => b.id)]))
-    if (blockIsFree(base, dropX, dropY, moving.size)) {
-      const occupied = new Set(base)
-      reserveBlock(occupied, dropX, dropY, moving.size)
-      const moves: { id: string; x: number; y: number }[] = []
-      let ok = true
-      for (const b of blockers) {
-        const bx = typeof b.x === 'number' ? b.x : 0
-        const by = typeof b.y === 'number' ? b.y : 0
-        const cell = placeFree(occupied, b.size, { x: bx, y: by })
-        if (!cell) {
-          ok = false
-          break
-        }
-        moves.push({ id: b.id, x: cell.x, y: cell.y })
-      }
-      if (ok && moves.length) {
-        return { type: 'pushMany', x: dropX, y: dropY, moves }
-      }
-      // Single-blocker fallback: classic push
-      if (ok && moves.length === 0 && blockers.length === 1) {
-        const otherTo = placeFree(
-          occupiedExcluding(widgets, new Set([id, blockers[0].id])),
-          blockers[0].size,
-          {
-            x: typeof blockers[0].x === 'number' ? blockers[0].x : 0,
-            y: typeof blockers[0].y === 'number' ? blockers[0].y : 0,
-          }
-        )
-        if (otherTo) {
-          return {
-            type: 'push',
-            otherId: blockers[0].id,
-            x: dropX,
-            y: dropY,
-            otherTo,
-          }
-        }
-      }
-    }
-  }
-
-  return { type: 'free', ...findFreeDropPosition(widgets, id, dropX, dropY) }
-}
+export { assignCanvasPositions, autoLayoutFromCenter } from './canvasPlacement'
 
 function matchesQuery(w: WidgetConfig, q: string) {
   if (!q) return true
@@ -482,27 +173,16 @@ export function InfiniteCanvas({
       const dy = dragY.get()
       const cellX = Math.round((c.origX * STEP + dx) / STEP)
       const cellY = Math.round((c.origY * STEP + dy) / STEP)
-      const drop = resolveDropTarget(widgets, c.id, cellX, cellY)
-
-      // Atomic multi-card update
-      if (drop.type === 'swap' || drop.type === 'push' || drop.type === 'pushMany') {
-        const moveMap = new Map<string, { x: number; y: number }>()
-        moveMap.set(c.id, { x: drop.x, y: drop.y })
-        if (drop.type === 'swap') moveMap.set(drop.swapId, { x: c.origX, y: c.origY })
-        if (drop.type === 'push') moveMap.set(drop.otherId, { x: drop.otherTo.x, y: drop.otherTo.y })
-        if (drop.type === 'pushMany') {
-          for (const m of drop.moves) moveMap.set(m.id, { x: m.x, y: m.y })
+      const next = resolveCanvasDrop(widgets, c.id, cellX, cellY)
+      const changed = next.some((widget, index) => widget.x !== widgets[index].x || widget.y !== widgets[index].y)
+      if (changed && onWidgetsChange) onWidgetsChange(next)
+      else if (changed) {
+        for (const widget of next) {
+          const before = widgets.find((item) => item.id === widget.id)
+          if (before && (before.x !== widget.x || before.y !== widget.y)) {
+            onUpdateWidget(widget.id, { x: widget.x, y: widget.y })
+          }
         }
-        const next = widgets.map((w) => {
-          const p = moveMap.get(w.id)
-          return p ? { ...w, x: p.x, y: p.y } : w
-        })
-        if (onWidgetsChange) onWidgetsChange(next)
-        else {
-          for (const [wid, p] of moveMap) onUpdateWidget(wid, p)
-        }
-      } else if (drop.x !== c.origX || drop.y !== c.origY) {
-        onUpdateWidget(c.id, { x: drop.x, y: drop.y })
       }
     }
     panDrag.current = null
