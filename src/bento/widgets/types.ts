@@ -87,9 +87,25 @@ export interface LinkWidgetConfig extends BaseWidgetConfig {
 
 // ============ Image Widget ============
 
+export interface GalleryImage {
+    id: string
+    src: string
+    alt?: string
+}
+
+export type ImageCoverMode = 'fixed' | 'random'
+
+export const GALLERY_MAX_IMAGES = 30
+export const DEFAULT_COVER_INTERVAL_MS = 15_000
+
 export interface ImageWidgetConfig extends BaseWidgetConfig {
     category: 'image'
+    /** Legacy single-image field; kept in sync with the active cover */
     src: string
+    images?: GalleryImage[]
+    coverMode?: ImageCoverMode
+    coverId?: string
+    coverIntervalMs?: number
     alt?: string
     title?: string
     subtitle?: string

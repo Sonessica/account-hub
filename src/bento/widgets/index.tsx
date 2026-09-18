@@ -26,6 +26,7 @@ export { MapWidget, createMapWidgetConfig } from './map/MapWidget'
 
 // Image Widget
 export { ImageWidget, createImageWidgetConfig } from './image/ImageWidget'
+export * from './image/gallery'
 
 // Section Title Widget
 export { SectionTitleWidget, createSectionTitleConfig } from './section/SectionTitleWidget'

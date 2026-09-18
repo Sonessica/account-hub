@@ -11,9 +11,10 @@ import { BENTO_GAP, BENTO_UNIT } from '@/bento/core/BentoSizeMap'
 import { WidgetRenderer } from '@/bento/widgets'
 import { WidgetEditOverlay } from '@/bento/editor'
 import { WidgetEditorPanel } from '@/bento/editor'
-import type { WidgetConfig, WidgetSize } from '@/bento/widgets/types'
+import type { GalleryImage, ImageWidgetConfig, WidgetConfig, WidgetSize } from '@/bento/widgets/types'
 import { WIDGET_SIZES } from '@/bento/widgets/types'
 import { resolveCanvasDrop, SEARCH_COLS, SEARCH_ROWS } from './canvasPlacement'
+import { normalizeImageGallery, resolveCoverIndex } from '@/bento/widgets/image/gallery'
 
 const STEP = BENTO_UNIT + BENTO_GAP
 
@@ -72,7 +73,10 @@ export function InfiniteCanvas({
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
   const [query, setQuery] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [lightbox, setLightbox] = useState<{ src: string; title?: string } | null>(null)
+  const [lightbox, setLightbox] = useState<{
+    widgetId: string
+    index: number
+  } | null>(null)
   const panDrag = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null)
   const cardDrag = useRef<{
     id: string
@@ -121,7 +125,7 @@ export function InfiniteCanvas({
     if (!viewportSize.width || !viewportSize.height) return []
     const overscan = STEP * 2
     return widgets.filter((w) => {
-      if (w.id === selectedWidgetId || w.id === draggingId || w.id === editingWidgetId) return true
+      if (w.id === selectedWidgetId || w.id === draggingId || w.id === editingWidgetId || w.id === lightbox?.widgetId) return true
       const x = (typeof w.x === 'number' ? w.x : 0) * STEP + cullPan.x
       const y = (typeof w.y === 'number' ? w.y : 0) * STEP + cullPan.y
       const size = widgetPixelSize(w.size)
@@ -132,7 +136,7 @@ export function InfiniteCanvas({
         y <= viewportSize.height + overscan
       )
     })
-  }, [widgets, selectedWidgetId, draggingId, editingWidgetId, cullPan, viewportSize])
+  }, [widgets, selectedWidgetId, draggingId, editingWidgetId, lightbox?.widgetId, cullPan, viewportSize])
 
   const onViewportPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-canvas-card]')) return
@@ -216,6 +220,66 @@ export function InfiniteCanvas({
 
   const editingWidget = widgets.find((w) => w.id === editingWidgetId) || null
 
+  const lightboxWidget = lightbox
+    ? widgets.find((w) => w.id === lightbox.widgetId && w.category === 'image')
+    : null
+  const lightboxGallery = lightboxWidget
+    ? normalizeImageGallery(lightboxWidget as ImageWidgetConfig)
+    : null
+  const lightboxImages: GalleryImage[] = lightboxGallery?.images ?? []
+  const lightboxIndex = lightboxImages.length
+    ? Math.min(Math.max(lightbox?.index ?? 0, 0), lightboxImages.length - 1)
+    : 0
+  const lightboxImage = lightboxImages[lightboxIndex] || null
+  const lightboxTitle = lightboxWidget
+    ? String((lightboxWidget as ImageWidgetConfig).title || '')
+    : ''
+  const lightboxRef = useRef<HTMLDivElement | null>(null)
+
+  const stepLightbox = (delta: number) => {
+    if (!lightboxImages.length) return
+    setLightbox((prev) => {
+      if (!prev) return prev
+      const len = lightboxImages.length
+      return { ...prev, index: ((prev.index + delta) % len + len) % len }
+    })
+  }
+
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setLightbox(null)
+        return
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        stepLightbox(-1)
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        stepLightbox(1)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightbox, lightboxImages.length])
+
+  useEffect(() => {
+    if (!lightbox) return
+    const el = lightboxRef.current
+    if (!el) return
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+      stepLightbox(delta > 0 ? 1 : -1)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightbox, lightboxImages.length, lightboxIndex])
+
   return (
     <div
       ref={viewportRef}
@@ -256,8 +320,10 @@ export function InfiniteCanvas({
           const px = widgetPixelSize(w.size)
           const hit = matchesQuery(w, query)
           const isDragged = draggingId === w.id
-          const imageSrc =
-            w.category === 'image' ? String((w as { src?: string }).src || '') : ''
+          const gallery =
+            w.category === 'image'
+              ? normalizeImageGallery(w as ImageWidgetConfig)
+              : null
           return (
             <motion.div
               key={w.id}
@@ -301,11 +367,9 @@ export function InfiniteCanvas({
                   onOpenEdit(w.id)
                   return
                 }
-                if (w.category === 'image' && imageSrc) {
-                  setLightbox({
-                    src: imageSrc,
-                    title: 'title' in w ? String((w as { title?: string }).title || '') : undefined,
-                  })
+                if (w.category === 'image' && gallery && gallery.images.length > 0) {
+                  const start = resolveCoverIndex(w as ImageWidgetConfig)
+                  setLightbox({ widgetId: w.id, index: start })
                 }
               }}
             >
@@ -336,59 +400,84 @@ export function InfiniteCanvas({
       {onAutoLayout && null}
 
       <AnimatePresence>
-        {lightbox && (
+        {lightbox && lightboxImage && (
           <motion.div
+            ref={lightboxRef}
             data-canvas-chrome
-            className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
+            className="fixed inset-0 z-[100000] flex flex-col items-center justify-center gap-4 bg-black/70 p-6 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
             onClick={() => setLightbox(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="图片预览"
           >
             <motion.div
-              className="relative max-h-full max-w-5xl"
+              className="relative flex max-h-full max-w-5xl flex-col items-center"
               initial={{ scale: 0.72, opacity: 0, y: 28 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.86, opacity: 0, y: 12 }}
               transition={{ type: 'spring', stiffness: 320, damping: 18, mass: 0.7 }}
               onClick={(e) => e.stopPropagation()}
             >
-              {lightbox.title && (
+              {lightboxTitle && (
                 <motion.div
                   className="mb-3 text-center text-sm font-medium text-white/90"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.12, type: 'spring', stiffness: 260, damping: 20 }}
+                  transition={{ delay: 0.08, type: 'spring', stiffness: 260, damping: 20 }}
                 >
-                  {lightbox.title}
+                  {lightboxTitle}
                 </motion.div>
               )}
 
               <motion.img
-                src={lightbox.src}
-                alt={lightbox.title || ''}
-                className="max-h-[80vh] w-auto max-w-full rounded-[28px] object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 16 }}
+                key={lightboxImage.id}
+                src={lightboxImage.src}
+                alt={lightboxImage.alt || lightboxTitle || ''}
+                className="max-h-[70vh] w-auto max-w-full rounded-[28px] object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
+                initial={{ opacity: 0.65, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 220, damping: 20 }}
               />
 
-              <motion.button
-                type="button"
-                className="absolute -right-2 -top-10 grid size-9 place-items-center rounded-full bg-white/15 text-lg font-bold text-white transition hover:bg-white/30"
-                onClick={() => setLightbox(null)}
-                aria-label="close"
-                initial={{ opacity: 0, scale: 0.5, rotate: -30 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 18, delay: 0.08 }}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.92 }}
-              >
-                x
-              </motion.button>
+              <div className="mt-2 text-xs text-white/55">
+                {lightboxIndex + 1} / {lightboxImages.length}
+              </div>
             </motion.div>
+
+            {lightboxImages.length > 1 && (
+              <div
+                className="max-w-[min(96vw,900px)] overflow-x-auto rounded-2xl bg-black/25 px-3 py-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-2">
+                  {lightboxImages.map((image, index) => (
+                    <button
+                      key={image.id}
+                      type="button"
+                      aria-label={`查看第 ${index + 1} 张`}
+                      className={[
+                        'h-14 w-14 shrink-0 overflow-hidden rounded-xl transition',
+                        index === lightboxIndex
+                          ? 'ring-2 ring-white scale-105'
+                          : 'opacity-70 ring-1 ring-white/20 hover:opacity-100',
+                      ].join(' ')}
+                      onClick={() => setLightbox({ widgetId: lightbox.widgetId, index })}
+                    >
+                      <img
+                        src={image.src}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        draggable={false}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

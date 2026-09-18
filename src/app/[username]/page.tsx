@@ -45,9 +45,13 @@ function WidgetRenderer({ widget }: { widget: WidgetConfig }) {
 
         case 'image': {
             const imageWidget = widget as ImageWidgetConfig
+            const cover =
+                imageWidget.images?.find((img) => img.id === imageWidget.coverId)?.src ||
+                imageWidget.images?.[0]?.src ||
+                imageWidget.src
             return (
                 <BentoCard size={widget.size} clickable>
-                    <BentoCard.Image src={imageWidget.src} />
+                    <BentoCard.Image src={cover} />
                     {imageWidget.title && (
                         <BentoCard.Overlay gradient="bottom">
                             <BentoCard.Title color="inverse">{imageWidget.title}</BentoCard.Title>
