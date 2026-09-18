@@ -6,6 +6,7 @@ import { EditorToolbar, useEditor, EditorFooter } from '@/bento/editor'
 import { SettingsModal } from '@/bento/editor/SettingsModal'
 import { InfiniteCanvas, assignCanvasPositions, autoLayoutFromCenter } from '@/bento/editor/InfiniteCanvas'
 import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
+import { RadialNavigation } from '@/components/site/RadialNavigation'
 
 // ============ Editor View Wrapper ============
 
@@ -96,6 +97,7 @@ const HubShell: React.FC = () => {
                     setCenterVersion((version) => version + 1)
                 }}
             />
+            <RadialNavigation hidden={isEditing} />
             {showSettings && (
                 <SettingsModal
                     profile={profile}

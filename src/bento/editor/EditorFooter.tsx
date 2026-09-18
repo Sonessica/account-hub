@@ -15,7 +15,7 @@ export const EditorFooter: React.FC<{
 }> = ({ isEditing = false, onToggleEdit, onOpenSettings, onAutoLayout }) => {
     return (
         <div
-            className="fixed bottom-0 left-0 right-0 h-14 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md border-t border-black/5 z-50"
+            className="fixed bottom-6 left-6 z-[10000] flex items-center gap-2 rounded-2xl border border-white/50 bg-white/85 p-2 shadow-lg backdrop-blur-md"
             style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
         >
             <button

@@ -1,0 +1,90 @@
+.root {
+  position: fixed;
+  right: 28px;
+  bottom: 24px;
+  z-index: 10000;
+  width: 62px;
+  height: 62px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.mainButton,
+.item {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
+
+.mainButton {
+  inset: 0;
+  z-index: 2;
+  color: white;
+  background: #111;
+  transition: transform 240ms cubic-bezier(.2,.8,.2,1), background-color 180ms ease;
+}
+
+.mainButton:hover { background: #292929; }
+.open .mainButton { transform: rotate(45deg); }
+
+.item {
+  left: 5px;
+  top: 5px;
+  width: 52px;
+  height: 52px;
+  color: #222;
+  background: rgba(255, 255, 255, 0.96);
+  opacity: 0;
+  transform: translate(0, 0) scale(.55);
+  pointer-events: none;
+  transition:
+    transform 280ms cubic-bezier(.2,.85,.25,1.2),
+    opacity 150ms ease,
+    background-color 150ms ease;
+  transition-delay: calc(var(--index) * 28ms);
+  text-decoration: none;
+}
+
+.open .item {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(var(--x), var(--y)) scale(1);
+}
+
+.item:hover,
+.active {
+  color: white;
+  background: #111;
+}
+
+.label {
+  position: absolute;
+  right: 62px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  color: white;
+  background: rgba(17, 17, 17, .9);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(5px);
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.item:hover .label,
+.item:focus-visible .label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mainButton,
+  .item,
+  .label { transition: none; }
+}
