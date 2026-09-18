@@ -1,27 +1,21 @@
-# NAS SQLite persistence
+# NAS SQLite 数据与备份
 
-The deployed `/bento/editor` is a single-user editor. It requires
-`ACCOUNT_HUB_ADMIN_PASSWORD` (at least 6 characters) and an independent,
-random `ACCOUNT_HUB_SESSION_SECRET` (at least 32 characters) in an untracked
-`.env` next to `docker-compose.yml`. Login attempts are rate-limited per client
-IP. The database lives at `./data/account-hub.sqlite` on
-the NAS and is bind-mounted into `/app/data`. Never commit `.env` or `data/`.
-The storage layer uses Node 22's built-in `node:sqlite` module; no native npm
-SQLite package is needed. Node currently marks this module experimental.
+当前 `/bento/editor` 从 `/api/private/editor` 读取、写入一份共享快照。快照包含卡片、个人资料和站点设置。后端实现位于 `src/lib/server/editor-db.ts`，使用 Node.js 22 的 `node:sqlite`；当前编辑器接口公开，不依赖旧版 Supabase 登录或 `/api/private/session` 的会话状态。
 
-Run `docker compose up -d --build` from `/share/Container/account-hub` to deploy.
-The first authenticated browser may import its existing OpenBento localStorage
-cards if the database is empty. Once a snapshot exists, the database is the
-source of truth in every browser. Saving uses a revision number and rejects
-stale writes with HTTP 409. The old browser data is not deleted or duplicated
-when importing or starting blank; the editor reads its initial state directly
-from SQLite. Snapshot requests are limited to 20 MB.
+## 存储位置
 
-To back up without stopping the app, use SQLite's online backup mechanism or
-stop the app container and copy the full `data/` directory (including `-wal`
-and `-shm` files if present). Backups should be kept outside this directory.
-Restoring requires stopping the app first and restoring a consistent backup.
+Compose 将宿主机 `./data` 挂载到容器 `/app/data`。默认数据库为 `./data/account-hub.sqlite`，上传媒体在 `./data/media/`；可分别通过 `ACCOUNT_HUB_DB_PATH`、`ACCOUNT_HUB_MEDIA_PATH` 调整容器内路径。数据库采用 WAL 模式，运行中可能同时存在 `account-hub.sqlite-wal` 和 `account-hub.sqlite-shm`。不要将 `data/` 纳入 Git 或 Docker 构建上下文。
 
-The original OpenBento Supabase API routes remain in the codebase but are not
-used by this single-user editor. They should be removed or integrated in a
-later product-hardening phase.
+## 保存与首次导入
+
+- 页面加载时读取 SQLite；首次为空且当前浏览器有遗留 OpenBento localStorage 卡片时，展示一次性导入选择。无论选择导入还是空白开始，原 localStorage 不会被清除。
+- 编辑后的快照自动保存。写入携带 revision；若其他浏览器已先保存，接口返回 HTTP 409，页面提示刷新，不会静默覆盖较新的快照。
+- 快照请求限制为 20 MB；上传图片限制为每张 20 MB，并会转为 WebP 存入媒体目录。设置面板的「导出 JSON」只导出个人资料，不能替代数据库备份。
+
+## 备份与恢复
+
+备份应同时保护数据库和 `media/`，并放在 `data/` 目录之外。推荐使用 SQLite online backup API 生成一致性数据库副本，再复制媒体目录；另一种做法是先停止应用容器，再复制整个 `data/`（包含可能存在的 `-wal`、`-shm` 文件）。运行中只拷贝主 `.sqlite` 文件可能遗漏尚在 WAL 中的写入。
+
+恢复时先停应用，确认备份来自同一时点，恢复数据库与对应媒体目录后再启动。不要把备份文件放回 `data/` 作为常驻文件：它会增加空间占用，也容易与当前数据库混淆。部署代码更新通常不需要清空或重建数据库；`docker compose up -d --build` 会继续使用原有 bind mount。
+
+仓库仍保留旧版 Supabase 路由和会话代码；这些不是当前共享快照的备份来源。
