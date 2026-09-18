@@ -1,6 +1,6 @@
 {
   "name": "account-hub",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Self-hosted single-user Account Hub / Bento editor with NAS SQLite persistence, based on OpenBento.",
   "keywords": [
     "bento",

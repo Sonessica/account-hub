@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GalleryImage, ImageWidgetConfig } from '../widgets/types'
-import { GALLERY_MAX_IMAGES } from '../widgets/types'
+import { COVER_EFFECT_OPTIONS, DEFAULT_COVER_EFFECT, GALLERY_MAX_IMAGES } from '../widgets/types'
 import { uploadImage } from '@/lib/client/upload-image'
 import {
     buildGalleryPatch,
@@ -397,6 +397,22 @@ export function ImageEditorModal({
                             {images.length <= 1 && (
                                 <span className="text-[11px] font-normal text-black/40">多于 1 张时可开启随机封面；编辑模式始终显示固定封面。</span>
                             )}
+                        </label>
+
+                        <label className={labelClass}>封面切换特效
+                            <select
+                                className={fieldClass}
+                                value={widget.coverEffect || DEFAULT_COVER_EFFECT}
+                                disabled={images.length <= 1}
+                                onChange={event => onUpdate({ coverEffect: event.target.value as ImageWidgetConfig['coverEffect'] })}
+                            >
+                                {COVER_EFFECT_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                            <span className="text-[11px] font-normal text-black/40">
+                                仅在查看模式、多图且开启随机封面时生效。「每次随机特效」会在 6 种转场中轮换。
+                            </span>
                         </label>
 
                         <label className={labelClass}>替代文字（图集默认）

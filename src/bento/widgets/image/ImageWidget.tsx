@@ -8,17 +8,20 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { BentoCard } from '@/bento/core'
 import type { ImageWidgetConfig, WidgetProps } from '../types'
+import { DEFAULT_COVER_EFFECT } from '../types'
 import { normalizeImageGallery, resolveCoverIndex } from './gallery'
+import { CoverMedia } from './CoverMedia'
 
 export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     config,
     isEditing = false,
 }) => {
-    const { alt, title, subtitle, size } = config
+    const { alt, title, subtitle, size, objectFit } = config
     const gallery = useMemo(() => normalizeImageGallery(config), [config])
     const { images } = gallery
 
     const [liveIndex, setLiveIndex] = useState(() => resolveCoverIndex(config))
+    const [effectSeed, setEffectSeed] = useState(0)
 
     useEffect(() => {
         if (isEditing) return
@@ -29,6 +32,7 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
         const timeoutId = window.setTimeout(() => {
             intervalId = window.setInterval(() => {
                 setLiveIndex((prev) => (prev + 1) % images.length)
+                setEffectSeed((s) => s + 1)
             }, interval)
         }, offset)
         return () => {
@@ -46,6 +50,8 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
 
     const cover = images[displayIndex]
     const hasOverlay = title || subtitle
+    const enableEffect = !isEditing && images.length > 1
+    const configuredEffect = gallery.coverEffect || DEFAULT_COVER_EFFECT
 
     if (!cover) {
         return (
@@ -56,11 +62,19 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     }
 
     return (
-        <BentoCard size={size} disableHover style={{ pointerEvents: 'none' }}>
-            <BentoCard.Image
-                key={cover.id}
-                src={cover.src}
+        <BentoCard
+            size={size}
+            disableHover
+            style={{ pointerEvents: 'none', position: 'relative', overflow: 'hidden' }}
+        >
+            <CoverMedia
+                image={cover}
+                effect={configuredEffect}
+                objectFit={objectFit || 'cover'}
                 alt={cover.alt || alt || title || ''}
+                intervalMs={gallery.coverIntervalMs}
+                enableEffect={enableEffect}
+                effectSeed={effectSeed}
             />
 
             {hasOverlay && (
@@ -112,6 +126,7 @@ export function createImageWidgetConfig(
         coverMode: 'fixed',
         coverId: imageId,
         coverIntervalMs: 15_000,
+        coverEffect: DEFAULT_COVER_EFFECT,
         objectFit: 'cover',
         ...options,
     }

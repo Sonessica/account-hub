@@ -95,8 +95,28 @@ export interface GalleryImage {
 
 export type ImageCoverMode = 'fixed' | 'random'
 
-export const GALLERY_MAX_IMAGES = 30
+export type CoverEffect =
+    | 'crossfade'
+    | 'blur'
+    | 'drift'
+    | 'kenburns'
+    | 'reveal'
+    | 'shutter'
+    | 'random'
+
+export const GALLERY_MAX_IMAGES = 9
 export const DEFAULT_COVER_INTERVAL_MS = 15_000
+export const DEFAULT_COVER_EFFECT: CoverEffect = 'crossfade'
+
+export const COVER_EFFECT_OPTIONS: { value: CoverEffect; label: string }[] = [
+    { value: 'crossfade', label: '柔和缩放 + Crossfade（默认）' },
+    { value: 'blur', label: '景深模糊对焦' },
+    { value: 'drift', label: '轻微方向漂移' },
+    { value: 'kenburns', label: 'Ken Burns 微镜头' },
+    { value: 'reveal', label: '遮罩 Reveal' },
+    { value: 'shutter', label: '快门闪光' },
+    { value: 'random', label: '每次随机特效' },
+]
 
 export interface ImageWidgetConfig extends BaseWidgetConfig {
     category: 'image'
@@ -106,6 +126,7 @@ export interface ImageWidgetConfig extends BaseWidgetConfig {
     coverMode?: ImageCoverMode
     coverId?: string
     coverIntervalMs?: number
+    coverEffect?: CoverEffect
     alt?: string
     title?: string
     subtitle?: string

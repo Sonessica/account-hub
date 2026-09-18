@@ -1,5 +1,7 @@
 import {
+  DEFAULT_COVER_EFFECT,
   DEFAULT_COVER_INTERVAL_MS,
+  type CoverEffect,
   type GalleryImage,
   type ImageWidgetConfig,
 } from '../types'
@@ -21,6 +23,7 @@ export function normalizeImageGallery(widget: ImageWidgetConfig): {
   coverMode: 'fixed' | 'random'
   coverId: string | undefined
   coverIntervalMs: number
+  coverEffect: CoverEffect
 } {
   const raw = Array.isArray(widget.images) ? widget.images.filter((img) => !!img?.src) : []
   const images: GalleryImage[] = raw.length
@@ -42,6 +45,7 @@ export function normalizeImageGallery(widget: ImageWidgetConfig): {
     coverMode,
     coverId,
     coverIntervalMs: widget.coverIntervalMs || DEFAULT_COVER_INTERVAL_MS,
+    coverEffect: widget.coverEffect || DEFAULT_COVER_EFFECT,
   }
 }
 
@@ -75,7 +79,7 @@ export function resolveCoverImage(widget: ImageWidgetConfig, liveIndex?: number)
 export function buildGalleryPatch(
   prev: ImageWidgetConfig,
   images: GalleryImage[],
-  overrides: Partial<Pick<ImageWidgetConfig, 'coverId' | 'coverMode'>> = {},
+  overrides: Partial<Pick<ImageWidgetConfig, 'coverId' | 'coverMode' | 'coverEffect'>> = {},
 ): Partial<ImageWidgetConfig> {
   const nextImages = images.slice()
   const nextCoverId =
@@ -92,6 +96,7 @@ export function buildGalleryPatch(
     coverId: nextCoverId,
     coverMode,
     coverIntervalMs: prev.coverIntervalMs || DEFAULT_COVER_INTERVAL_MS,
+    coverEffect: overrides.coverEffect || prev.coverEffect || DEFAULT_COVER_EFFECT,
     src: cover?.src || '',
   }
 }
