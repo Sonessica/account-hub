@@ -17,9 +17,8 @@ import type { HTMLAttributes, ReactNode } from 'react'
  * 2x1 = 390 x 175 (175*2 + 40)
  * 1x2 = 175 x 390
  * 2x2 = 390 x 390
- * bar = 390 x 68 (thin horizontal bar)
  */
-export type BentoSize = '1x1' | '2x1' | '1x2' | '2x2' | 'bar' | '2x3' | '3x2' | '4x2'
+export type BentoSize = '1x1' | '2x1' | '1x2' | '2x2' | '2x3' | '3x2' | '4x2'
 
 
 // ============ Card Variants ============

@@ -19,6 +19,15 @@ export interface StoredEditor extends EditorSnapshot {
 
 let database: DatabaseSync | undefined
 
+function normalizeWidgets(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value.map((widget) => {
+    if (!widget || typeof widget !== 'object') return widget
+    const data = widget as Record<string, unknown>
+    return data.size === 'bar' ? { ...data, size: '2x1' } : widget
+  })
+}
+
 function getDatabase() {
   if (database) return database
   const file = resolve(process.env.ACCOUNT_HUB_DB_PATH || '/app/data/account-hub.sqlite')
@@ -43,9 +52,7 @@ export function readEditor(): StoredEditor | null {
   if (!row) return null
   const parsed = JSON.parse(row.snapshot) as Partial<EditorSnapshot> & { desktopWidgets?: unknown[] }
   const snapshot: EditorSnapshot = {
-    widgets: Array.isArray(parsed.widgets)
-      ? parsed.widgets
-      : Array.isArray(parsed.desktopWidgets) ? parsed.desktopWidgets : [],
+    widgets: normalizeWidgets(Array.isArray(parsed.widgets) ? parsed.widgets : parsed.desktopWidgets),
     profile: parsed.profile || { name: 'ATCHOOO', description: '' },
     ...(parsed.siteSettings ? { siteSettings: parsed.siteSettings } : {}),
   }
@@ -63,13 +70,14 @@ export function saveEditor(snapshot: EditorSnapshot, expectedRevision: number): 
     }
     const revision = expectedRevision + 1
     const updatedAt = new Date().toISOString()
+    const normalized = { ...snapshot, widgets: normalizeWidgets(snapshot.widgets) }
     db.prepare(`INSERT INTO editor_state (id, revision, snapshot, updated_at)
       VALUES (1, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET revision = excluded.revision,
       snapshot = excluded.snapshot, updated_at = excluded.updated_at`)
-      .run(revision, JSON.stringify(snapshot), updatedAt)
+      .run(revision, JSON.stringify(normalized), updatedAt)
     db.exec('COMMIT')
-    return { ...snapshot, revision, updatedAt }
+    return { ...normalized, revision, updatedAt }
   } catch (error) {
     db.exec('ROLLBACK')
     throw error

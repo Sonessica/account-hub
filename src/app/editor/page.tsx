@@ -36,13 +36,9 @@ const WIDGET_DIMENSIONS: Record<WidgetSize, { width: number; height: number }> =
     '2x1': { width: 390, height: 175 },
     '1x2': { width: 175, height: 390 },
     '2x2': { width: 390, height: 390 },
-    'bar': { width: 390, height: 68 },
 }
 
 const parseWidgetSize = (size: WidgetSize): { cols: number; rows: number } => {
-    if (size === 'bar') {
-        return { cols: 2, rows: 1 }
-    }
     const [cols, rows] = size.split('x').map(Number)
     return { cols, rows }
 }

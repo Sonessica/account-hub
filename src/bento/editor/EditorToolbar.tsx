@@ -319,7 +319,7 @@ export const EditorToolbar: React.FC = () => {
     }
 
     const handleAddSectionTitle = () => {
-        addWidget(createSectionTitleConfig('', 'bar'))
+        addWidget(createSectionTitleConfig('', '2x1'))
     }
 
     return (

@@ -33,7 +33,6 @@ export const bentoSizes: Record<BentoSize, { width: number; height: number; colu
   '2x1': { width: 390, height: 175, columns: 2, rows: 1 },  // 175*2 + 40
   '1x2': { width: 175, height: 390, columns: 1, rows: 2 },
   '2x2': { width: 390, height: 390, columns: 2, rows: 2 },
-  'bar': { width: 390, height: 68, columns: 2, rows: 1 },   // Thin horizontal bar (390×68)
   // Extended sizes
   '2x3': { width: 390, height: 605, columns: 2, rows: 3 },  // 175*3 + 40*2
   '3x2': { width: 605, height: 390, columns: 3, rows: 2 },

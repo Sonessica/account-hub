@@ -13,7 +13,7 @@ import { WidgetEditOverlay } from '@/bento/editor'
 import { WidgetEditorPanel } from '@/bento/editor'
 import type { GalleryImage, ImageWidgetConfig, WidgetConfig, WidgetSize } from '@/bento/widgets/types'
 import { WIDGET_SIZES } from '@/bento/widgets/types'
-import { resolveCanvasDrop, SEARCH_COLS, SEARCH_ROWS } from './canvasPlacement'
+import { resolveCanvasDrop, resolveCanvasResize, SEARCH_COLS, SEARCH_ROWS } from './canvasPlacement'
 import { normalizeImageGallery, resolveCoverIndex } from '@/bento/widgets/image/gallery'
 
 const STEP = BENTO_UNIT + BENTO_GAP
@@ -53,6 +53,7 @@ type CanvasProps = {
   onDragStateChange?: (draggingId: string | null) => void
   onAutoLayout?: () => void
   onWidgetsChange?: (widgets: WidgetConfig[]) => void
+  centerVersion?: number
 }
 
 export function InfiniteCanvas({
@@ -67,6 +68,7 @@ export function InfiniteCanvas({
   onDragStateChange,
   onAutoLayout,
   onWidgetsChange,
+  centerVersion = 0,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -86,7 +88,7 @@ export function InfiniteCanvas({
     origY: number
     moved: boolean
   } | null>(null)
-  const centeredOnce = useRef(false)
+  const centeredVersion = useRef<number | null>(null)
 
   const dragX = useMotionValue(0)
   const dragY = useMotionValue(0)
@@ -95,7 +97,7 @@ export function InfiniteCanvas({
 
   useEffect(() => {
     const el = viewportRef.current
-    if (!el || centeredOnce.current) return
+    if (!el || centeredVersion.current === centerVersion) return
     const rect = el.getBoundingClientRect()
     const searchW = SEARCH_COLS * BENTO_UNIT + (SEARCH_COLS - 1) * BENTO_GAP
     const searchH = SEARCH_ROWS * BENTO_UNIT
@@ -103,8 +105,8 @@ export function InfiniteCanvas({
       x: rect.width / 2 - searchW / 2,
       y: rect.height / 2 - searchH / 2,
     })
-    centeredOnce.current = true
-  }, [])
+    centeredVersion.current = centerVersion
+  }, [centerVersion])
 
   useEffect(() => {
     const el = viewportRef.current
@@ -388,7 +390,18 @@ export function InfiniteCanvas({
                 <WidgetEditOverlay
                   widget={w}
                   onDelete={() => onRemoveWidget(w.id)}
-                  onSizeChange={(size) => onUpdateWidget(w.id, { size })}
+                  onSizeChange={(size) => {
+                    const next = resolveCanvasResize(widgets, w.id, size)
+                    if (onWidgetsChange) onWidgetsChange(next)
+                    else {
+                      for (const widget of next) {
+                        const before = widgets.find((item) => item.id === widget.id)
+                        if (before && (before.size !== widget.size || before.x !== widget.x || before.y !== widget.y)) {
+                          onUpdateWidget(widget.id, { size: widget.size, x: widget.x, y: widget.y })
+                        }
+                      }
+                    }
+                  }}
                   onUpdate={(u) => onUpdateWidget(w.id, u)}
                 />
               )}

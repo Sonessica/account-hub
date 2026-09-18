@@ -4,20 +4,19 @@
  * Widget 系统核心类型定义
  */
 
-// ============ Widget 尺寸 (5 种变体 from Figma) ============
+// ============ Widget 尺寸 ============
 
-export type WidgetSize = '1x1' | '2x1' | '1x2' | '2x2' | 'bar'
+export type WidgetSize = '1x1' | '2x1' | '1x2' | '2x2'
 
 export const WIDGET_SIZES = {
     '1x1': { cols: 1, rows: 1, width: 175, height: 175, label: 'Small' },
     '2x1': { cols: 2, rows: 1, width: 390, height: 175, label: 'Wide' },
     '1x2': { cols: 1, rows: 2, width: 175, height: 390, label: 'Tall' },
     '2x2': { cols: 2, rows: 2, width: 390, height: 390, label: 'Large' },
-    'bar': { cols: 2, rows: 0.4, width: 390, height: 68, label: 'Bar' },
 } as const
 
 // Size variants array (for size picker UI)
-export const SIZE_VARIANTS: WidgetSize[] = ['1x1', '2x1', '1x2', '2x2', 'bar']
+export const SIZE_VARIANTS: WidgetSize[] = ['1x1', '2x1', '1x2', '2x2']
 
 
 

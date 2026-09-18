@@ -6,14 +6,11 @@ export const SEARCH_ROWS = 1
 type Point = { x: number; y: number }
 type Span = { cols: number; rows: number }
 
-// A bar is visually short, but it reserves a full row so no card can occupy
-// the same grid cells. Keep this mapping in sync with WidgetSize.
 const SPANS: Record<WidgetSize, Span> = {
   '1x1': { cols: 1, rows: 1 },
   '2x1': { cols: 2, rows: 1 },
   '1x2': { cols: 1, rows: 2 },
   '2x2': { cols: 2, rows: 2 },
-  bar: { cols: 2, rows: 1 },
 }
 
 const key = (x: number, y: number) => `${x},${y}`
@@ -110,13 +107,85 @@ export function assignCanvasPositions(widgets: WidgetConfig[]): WidgetConfig[] {
 
 export function autoLayoutFromCenter(widgets: WidgetConfig[]): WidgetConfig[] {
   const occupied = searchCells()
-  const origin = { x: Math.floor(Math.random() * 13) - 6, y: Math.floor(Math.random() * 13) - 6 }
-  const reverse = Math.random() < 0.5
-  const order = widgets.map((widget) => ({ widget, tie: Math.random() }))
-    .sort((a, b) => area(b.widget) - area(a.widget) || a.tie - b.tie)
+  const order = widgets.map((widget, index) => ({ widget, index }))
+    .sort((a, b) => area(b.widget) - area(a.widget) || a.index - b.index)
   const positions = new Map<string, Point>()
-  for (const { widget } of order) positions.set(widget.id, firstFree(occupied, widget.size, origin, reverse))
+  const placed: { point: Point; size: WidgetSize }[] = []
+  for (const { widget } of order) {
+    const point = balancedFreePosition(occupied, widget.size, placed)
+    positions.set(widget.id, point)
+    placed.push({ point, size: widget.size })
+  }
   return widgets.map((widget) => ({ ...widget, ...positions.get(widget.id)! }))
+}
+
+function distanceFromSearch(point: Point, size: WidgetSize) {
+  const span = SPANS[size]
+  const right = point.x + span.cols - 1
+  const bottom = point.y + span.rows - 1
+  const dx = point.x >= SEARCH_COLS ? point.x - SEARCH_COLS : right < 0 ? -right - 1 : -1
+  const dy = point.y >= SEARCH_ROWS ? point.y - SEARCH_ROWS : bottom < 0 ? -bottom - 1 : -1
+  return Math.max(0, dx, dy)
+}
+
+function balanceScore(placed: { point: Point; size: WidgetSize }[], point: Point, size: WidgetSize) {
+  let minX = 0
+  let maxX = SEARCH_COLS - 1
+  let minY = 0
+  let maxY = SEARCH_ROWS - 1
+  for (const item of [...placed, { point, size }]) {
+    const span = SPANS[item.size]
+    minX = Math.min(minX, item.point.x)
+    maxX = Math.max(maxX, item.point.x + span.cols - 1)
+    minY = Math.min(minY, item.point.y)
+    maxY = Math.max(maxY, item.point.y + span.rows - 1)
+  }
+  const left = -minX
+  const right = maxX - (SEARCH_COLS - 1)
+  const top = -minY
+  const bottom = maxY - (SEARCH_ROWS - 1)
+  return [
+    Math.abs(left - right) + Math.abs(top - bottom),
+    (maxX - minX + 1) * (maxY - minY + 1),
+    Math.abs((minX + maxX) / 2 - (SEARCH_COLS - 1) / 2),
+    Math.abs((minY + maxY) / 2 - (SEARCH_ROWS - 1) / 2),
+    point.y,
+    point.x,
+  ]
+}
+
+function scoreBefore(a: number[], b: number[]) {
+  for (let index = 0; index < a.length; index++) {
+    if (a[index] !== b[index]) return a[index] < b[index]
+  }
+  return false
+}
+
+function balancedFreePosition(
+  occupied: Set<string>,
+  size: WidgetSize,
+  placed: { point: Point; size: WidgetSize }[],
+) {
+  const span = SPANS[size]
+  for (let distance = 0; ; distance++) {
+    let best: Point | null = null
+    let bestScore: number[] | null = null
+    for (let y = -distance - span.rows; y <= SEARCH_ROWS + distance; y++) {
+      for (let x = -distance - span.cols; x <= SEARCH_COLS + distance; x++) {
+        const point = { x, y }
+        if (distanceFromSearch(point, size) !== distance || !isFree(occupied, point, size)) continue
+        const score = balanceScore(placed, point, size)
+        if (!bestScore || scoreBefore(score, bestScore)) {
+          best = point
+          bestScore = score
+        }
+      }
+    }
+    if (best) {
+      reserve(occupied, best, size)
+      return best
+    }
+  }
 }
 
 function overlaps(point: Point, size: WidgetSize, other: WidgetConfig) {
@@ -183,4 +252,39 @@ export function resolveCanvasDrop(widgets: WidgetConfig[], id: string, x: number
   const occupied = occupiedBy(placed, new Set([id]))
   const fallback = firstFree(occupied, moving.size, target)
   return withPositions(placed, new Map([[id, fallback]]))
+}
+
+export function resolveCanvasResize(widgets: WidgetConfig[], id: string, size: WidgetSize): WidgetConfig[] {
+  const placed = isValidCanvasLayout(widgets) ? widgets : assignCanvasPositions(widgets)
+  const current = placed.find((widget) => widget.id === id)
+  if (!current || current.size === size) return placed
+
+  const target = pointOf(current)
+  const resized = { ...current, size } as WidgetConfig
+  const others = placed.filter((widget) => widget.id !== id)
+  const blockers = others.filter((widget) => overlaps(target, size, widget))
+  const searchHit = !isFree(searchCells(), target, size)
+
+  if (!searchHit && blockers.length === 0) {
+    return placed.map((widget) => widget.id === id ? resized : widget)
+  }
+
+  if (searchHit) {
+    const occupied = occupiedBy(placed, new Set([id]))
+    const fallback = firstFree(occupied, size, target)
+    return placed.map((widget) => widget.id === id ? { ...resized, ...fallback } : widget)
+  }
+
+  const excluded = new Set([id, ...blockers.map((widget) => widget.id)])
+  const occupied = occupiedBy(placed, excluded)
+  reserve(occupied, target, size)
+  const positions = new Map<string, Point>([[id, target]])
+  for (const blocker of [...blockers].sort((a, b) => area(b) - area(a))) {
+    positions.set(blocker.id, firstFree(occupied, blocker.size, pointOf(blocker)))
+  }
+  const next = withPositions(
+    placed.map((widget) => widget.id === id ? resized : widget),
+    positions,
+  )
+  return isValidCanvasLayout(next) ? next : assignCanvasPositions(next)
 }

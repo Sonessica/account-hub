@@ -51,7 +51,6 @@ function getSizeLayout(size: WidgetSize) {
                 actionFontSize: 12,
                 lineClamp: 3,
                 horizontal: false,
-                isBar: false,
             }
         case '2x1':
             return {
@@ -65,7 +64,6 @@ function getSizeLayout(size: WidgetSize) {
                 lineClamp: 2,
                 horizontal: true,
                 rightContentWidth: '50%',
-                isBar: false,
             }
         case '1x2':
             return {
@@ -79,7 +77,6 @@ function getSizeLayout(size: WidgetSize) {
                 lineClamp: 6,
                 horizontal: false,
                 hasExtraContent: true,
-                isBar: false,
             }
         case '2x2':
             return {
@@ -93,21 +90,6 @@ function getSizeLayout(size: WidgetSize) {
                 lineClamp: 4,
                 horizontal: false,
                 hasExtraContent: true,
-                isBar: false,
-            }
-        case 'bar':
-            // 390×68 thin horizontal bar layout
-            return {
-                iconSize: 28,
-                titleTop: 0,
-                subtitleTop: 0,
-                actionTop: 0,
-                fontSize: 14,
-                subtitleFontSize: 12,
-                actionFontSize: 11,
-                lineClamp: 1,
-                horizontal: true,
-                isBar: true, // Special compact layout
             }
         default:
             return {
@@ -120,7 +102,6 @@ function getSizeLayout(size: WidgetSize) {
                 actionFontSize: 12,
                 lineClamp: 3,
                 horizontal: false,
-                isBar: false,
             }
     }
 }
@@ -139,76 +120,6 @@ const PlatformCardContent: React.FC<PlatformCardContentProps> = ({
 }) => {
     const layout = getSizeLayout(widgetSize)
     const iconRadius = layout.iconSize >= 40 ? (layout.iconSize === 56 ? 12 : 10) : 8
-
-    // Bar size: Special compact horizontal layout
-    if (layout.isBar) {
-        return (
-            <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                padding: '0 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                pointerEvents: 'none',
-            }}>
-                {/* Icon */}
-                <div style={{
-                    width: layout.iconSize,
-                    height: layout.iconSize,
-                    borderRadius: iconRadius,
-                    backgroundColor: iconBg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: iconBg === 'transparent' ? 'none' : iconShadow,
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                }}>
-                    {icon}
-                </div>
-
-                {/* Title */}
-                <div style={{
-                    flex: 1,
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: layout.fontSize,
-                    fontWeight: 500,
-                    lineHeight: '18px',
-                    letterSpacing: '-0.01em',
-                    color: textColor,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                }}>
-                    {title}
-                </div>
-
-                {/* Action Button (if exists) */}
-                {action && (
-                    <button style={{
-                        height: 26,
-                        paddingInline: 12,
-                        borderRadius: action.borderRadius || 6,
-                        backgroundColor: action.color || '#4093ef',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: action.textColor || '#ffffff',
-                        pointerEvents: 'auto',
-                        flexShrink: 0,
-                    }}>
-                        {action.label}
-                    </button>
-                )}
-            </div>
-        )
-    }
 
     // Standard layout (1x1, 2x1, 1x2, 2x2)
     return (
@@ -473,7 +384,6 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
         ? { ...defaultAction, label: ctaLabel }
         : defaultAction
     const ctaText = action?.label || platformConfig.ctaLabel || 'Visit'
-    const isBar = size === 'bar'
 
     // Per-size metrics (px) so every card size looks consistent
     const metrics = (() => {
@@ -484,8 +394,6 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
                 return { restBar: 48, hoverTop: 84, avatar: 88, avatarBorder: 7, iconBtn: 38, iconGlyph: 20, ctaPx: 12, ctaPy: 7, ctaFont: 12, pad: 16, titleFs: 16, subFs: 13, radius: 27 }
             case '2x1':
                 return { restBar: 48, hoverTop: 84, avatar: 88, avatarBorder: 7, iconBtn: 38, iconGlyph: 20, ctaPx: 12, ctaPy: 7, ctaFont: 12, pad: 16, titleFs: 16, subFs: 13, radius: 27 }
-            case 'bar':
-                return { restBar: 56, hoverTop: 10, avatar: 48, avatarBorder: 5, iconBtn: 34, iconGlyph: 18, ctaPx: 10, ctaPy: 6, ctaFont: 11, pad: 12, titleFs: 14, subFs: 12, radius: 16 }
             case '1x1':
             default:
                 return { restBar: 44, hoverTop: 72, avatar: 68, avatarBorder: 6, iconBtn: 34, iconGlyph: 18, ctaPx: 10, ctaPy: 6, ctaFont: 11, pad: 14, titleFs: 15, subFs: 12, radius: 27 }
@@ -550,7 +458,7 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
                     <div
                         className="absolute left-0 right-0"
                         style={{
-                            top: isBar ? 10 : metrics.avatar + 16,
+                            top: metrics.avatar + 16,
                             left: metrics.pad,
                             right: metrics.pad,
                             opacity: hovered ? 1 : 0,
@@ -585,7 +493,7 @@ export const LinkWidget: React.FC<WidgetProps<LinkWidgetConfig>> = ({
                                     lineHeight: `${metrics.subFs + 4}px`,
                                     color: 'rgba(255,255,255,0.92)',
                                     display: '-webkit-box',
-                                    WebkitLineClamp: size === '1x1' || isBar ? 2 : 3,
+                                    WebkitLineClamp: size === '1x1' ? 2 : 3,
                                     WebkitBoxOrient: 'vertical',
                                     overflow: 'hidden',
                                     whiteSpace: 'pre-wrap',

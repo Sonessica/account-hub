@@ -21,7 +21,7 @@ const EditorView: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 // ============ Editor Content ============
 
-const EditorContent: React.FC = () => {
+const EditorContent: React.FC<{ centerVersion: number }> = ({ centerVersion }) => {
     const {
         widgets,
         selectedWidgetId,
@@ -64,13 +64,14 @@ const EditorContent: React.FC = () => {
                 repairedOnce.current = true
                 reorderWidgets(next)
             }}
+            centerVersion={centerVersion}
         />
     )
 }
 
 // ============ Page Shell ============
 
-const HubShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const HubShell: React.FC = () => {
     const {
         isEditing,
         setIsEditing,
@@ -80,10 +81,11 @@ const HubShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         reorderWidgets,
     } = useEditor()
     const [showSettings, setShowSettings] = useState(false)
+    const [centerVersion, setCenterVersion] = useState(0)
 
     return (
         <>
-            {children}
+            <EditorContent centerVersion={centerVersion} />
             <EditorFooter
                 isEditing={isEditing}
                 onToggleEdit={() => setIsEditing(!isEditing)}
@@ -91,6 +93,7 @@ const HubShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 onAutoLayout={() => {
                     if (!isEditing || !widgets.length) return
                     reorderWidgets(autoLayoutFromCenter(widgets))
+                    setCenterVersion((version) => version + 1)
                 }}
             />
             {showSettings && (
@@ -110,9 +113,7 @@ export default function EditorPage() {
     return (
         <PersistentEditorProvider>
             <EditorView>
-                <HubShell>
-                    <EditorContent />
-                </HubShell>
+                <HubShell />
             </EditorView>
         </PersistentEditorProvider>
     )

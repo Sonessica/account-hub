@@ -105,17 +105,6 @@ const SizeIcon: React.FC<SizeIconProps> = ({ size, isActive }) => {
                         strokeWidth={strokeWidth}
                     />
                 )
-            case 'bar':
-                // Thin horizontal bar
-                return (
-                    <rect
-                        x="4" y="10"
-                        width="16" height="4"
-                        rx="2"
-                        stroke={stroke}
-                        strokeWidth={strokeWidth}
-                    />
-                )
             default:
                 return null
         }

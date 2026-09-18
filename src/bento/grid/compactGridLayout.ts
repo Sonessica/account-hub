@@ -28,7 +28,7 @@ export function compactGridLayout(
 
     // Process widgets in their current order
     for (const widget of widgets) {
-        const { cols, rows } = parseBentoSize(widget.size === 'bar' ? '2x1' : widget.size)
+        const { cols, rows } = parseBentoSize(widget.size)
 
         // Find the highest available position
         let bestRow = 0

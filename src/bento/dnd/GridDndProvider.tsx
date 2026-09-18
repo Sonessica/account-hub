@@ -31,7 +31,7 @@ import { snapCenterToCursor } from '@dnd-kit/modifiers'
 
 export interface GridItem {
     id: string
-    size: '1x1' | '2x1' | '1x2' | '2x2' | 'bar'
+    size: '1x1' | '2x1' | '1x2' | '2x2'
     data?: unknown
 }
 

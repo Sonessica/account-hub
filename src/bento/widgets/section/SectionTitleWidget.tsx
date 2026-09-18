@@ -13,13 +13,6 @@ import { useEditor } from '@/bento/editor'
 
 // 计算尺寸
 function getWidgetDimensions(size: string) {
-    // Handle 'bar' size specially - thin horizontal bar (390×68)
-    if (size === 'bar') {
-        return {
-            width: 390,
-            height: 68,
-        }
-    }
     const [cols, rows] = size.split('x').map(Number)
     return {
         width: cols * BENTO_UNIT + (cols - 1) * BENTO_GAP,
@@ -35,7 +28,7 @@ export const SectionTitleWidget: React.FC<WidgetProps<SectionTitleConfig>> = ({
     onClick,
     onConfigChange,
 }) => {
-    const { title, size = 'bar' } = config
+    const { title, size = '2x1' } = config
     const { width, height } = getWidgetDimensions(size)
     const [isFocused, setIsFocused] = React.useState(false)
     const [isHovered, setIsHovered] = React.useState(false)
@@ -173,7 +166,7 @@ export const SectionTitleWidget: React.FC<WidgetProps<SectionTitleConfig>> = ({
 
 export function createSectionTitleConfig(
     title: string,
-    size: SectionTitleConfig['size'] = 'bar'
+    size: SectionTitleConfig['size'] = '2x1'
 ): SectionTitleConfig {
     return {
         id: `section-${Date.now()}`,

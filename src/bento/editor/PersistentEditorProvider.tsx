@@ -23,11 +23,20 @@ const defaultProfile: ProfileData = {
   description: 'Personal hub',
 }
 
+function normalizeWidgets(value: unknown): WidgetConfig[] {
+  if (!Array.isArray(value)) return []
+  return value.map((widget) => {
+    if (!widget || typeof widget !== 'object') return widget
+    const data = widget as Omit<WidgetConfig, 'size'> & { size: WidgetConfig['size'] | 'bar' }
+    return data.size === 'bar' ? { ...data, size: '2x1' } : data
+  }) as WidgetConfig[]
+}
+
 function localSnapshot(): Snapshot | null {
   try {
     const layout = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null')
     const profile = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null')
-    const widgets = Array.isArray(layout?.desktopWidgets) ? layout.desktopWidgets : Array.isArray(layout?.widgets) ? layout.widgets : []
+    const widgets = normalizeWidgets(Array.isArray(layout?.desktopWidgets) ? layout.desktopWidgets : layout?.widgets)
     const hasProfile = profile && (profile.name !== defaultProfile.name || profile.description !== defaultProfile.description || profile.avatarUrl)
     if (!widgets.length && !hasProfile) return null
     return {
