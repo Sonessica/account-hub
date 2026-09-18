@@ -22,9 +22,18 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
 
     const [liveIndex, setLiveIndex] = useState(() => resolveCoverIndex(config))
     const [effectSeed, setEffectSeed] = useState(0)
+    const [pageVisible, setPageVisible] = useState(true)
+
+    useEffect(() => {
+        const sync = () => setPageVisible(document.visibilityState === 'visible')
+        sync()
+        document.addEventListener('visibilitychange', sync)
+        return () => document.removeEventListener('visibilitychange', sync)
+    }, [])
 
     useEffect(() => {
         if (isEditing) return
+        if (!pageVisible) return
         if (gallery.coverMode !== 'random' || images.length <= 1) return
         const interval = gallery.coverIntervalMs
         const offset = Math.floor(Math.random() * interval)
@@ -39,7 +48,7 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
             window.clearTimeout(timeoutId)
             if (intervalId !== undefined) window.clearInterval(intervalId)
         }
-    }, [isEditing, gallery.coverMode, gallery.coverIntervalMs, images.length])
+    }, [isEditing, pageVisible, gallery.coverMode, gallery.coverIntervalMs, images.length])
 
     const displayIndex = useMemo(() => {
         if (isEditing || gallery.coverMode !== 'random' || images.length <= 1) {
