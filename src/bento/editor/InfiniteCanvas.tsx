@@ -48,13 +48,18 @@ type CanvasProps = {
   onRemoveWidget: (id: string) => void
   onSelect: (id: string | null) => void
   selectedWidgetId: string | null
+  selectedWidgetIds?: string[]
+  onToggleSelection?: (id: string) => void
   onOpenEdit: (id: string) => void
   editingWidgetId: string | null
   onDragStateChange?: (draggingId: string | null) => void
   onAutoLayout?: () => void
   onWidgetsChange?: (widgets: WidgetConfig[]) => void
+  onDuplicateWidget?: (id: string) => void
   centerVersion?: number
   showSearch?: boolean
+  space?: string
+  onExternalDrop?: (payload: { urls: string[]; files: File[] }) => void
 }
 
 export function InfiniteCanvas({
@@ -64,6 +69,8 @@ export function InfiniteCanvas({
   onRemoveWidget,
   onSelect,
   selectedWidgetId,
+  selectedWidgetIds = selectedWidgetId ? [selectedWidgetId] : [],
+  onToggleSelection,
   onOpenEdit,
   editingWidgetId,
   onDragStateChange,
@@ -71,9 +78,17 @@ export function InfiniteCanvas({
   onWidgetsChange,
   centerVersion = 0,
   showSearch = true,
+  onDuplicateWidget,
+  space = 'home',
+  onExternalDrop,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const initialView = useRef<{ pan: { x: number; y: number }; zoom: number } | null>(null)
+  if (initialView.current === null && typeof window !== 'undefined') {
+    try { initialView.current = JSON.parse(localStorage.getItem(`account-hub-view-${space}`) || 'null') } catch { initialView.current = null }
+  }
+  const [pan, setPan] = useState(() => initialView.current?.pan || { x: 0, y: 0 })
+  const [zoom, setZoom] = useState(() => initialView.current?.zoom || 1)
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
   const [query, setQuery] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -99,7 +114,7 @@ export function InfiniteCanvas({
 
   useEffect(() => {
     const el = viewportRef.current
-    if (!el || centeredVersion.current === centerVersion) return
+    if (!el || centeredVersion.current === centerVersion || (initialView.current && centerVersion === 0)) return
     const rect = el.getBoundingClientRect()
     const searchW = showSearch ? SEARCH_COLS * BENTO_UNIT + (SEARCH_COLS - 1) * BENTO_GAP : BENTO_UNIT
     const searchH = BENTO_UNIT
@@ -109,6 +124,11 @@ export function InfiniteCanvas({
     })
     centeredVersion.current = centerVersion
   }, [centerVersion, showSearch])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => localStorage.setItem(`account-hub-view-${space}`, JSON.stringify({ pan, zoom })), 180)
+    return () => window.clearTimeout(timer)
+  }, [pan, space, zoom])
 
   useEffect(() => {
     const el = viewportRef.current
@@ -129,6 +149,7 @@ export function InfiniteCanvas({
     if (!viewportSize.width || !viewportSize.height) return []
     const overscan = STEP * 2
     return widgets.filter((w) => {
+      if (w.hidden && !isEditing) return false
       if (w.id === selectedWidgetId || w.id === draggingId || w.id === editingWidgetId || w.id === lightbox?.widgetId) return true
       const x = (typeof w.x === 'number' ? w.x : 0) * STEP + cullPan.x
       const y = (typeof w.y === 'number' ? w.y : 0) * STEP + cullPan.y
@@ -140,7 +161,7 @@ export function InfiniteCanvas({
         y <= viewportSize.height + overscan
       )
     })
-  }, [widgets, selectedWidgetId, draggingId, editingWidgetId, lightbox?.widgetId, cullPan, viewportSize])
+  }, [widgets, selectedWidgetId, draggingId, editingWidgetId, lightbox?.widgetId, cullPan, viewportSize, isEditing])
 
   const onViewportPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-canvas-card]')) return
@@ -219,7 +240,8 @@ export function InfiniteCanvas({
     dragX.set(0)
     dragY.set(0)
     e.preventDefault()
-    onSelect(w.id)
+    if (e.shiftKey) onToggleSelection?.(w.id)
+    else onSelect(w.id)
   }
 
   const editingWidget = widgets.find((w) => w.id === editingWidgetId) || null
@@ -293,10 +315,23 @@ export function InfiniteCanvas({
       onPointerMoveCapture={onViewportPointerMove}
       onPointerUpCapture={onViewportPointerUp}
       onPointerCancelCapture={onViewportPointerUp}
+      onWheel={(event) => {
+        if (!event.ctrlKey && !event.metaKey) return
+        event.preventDefault()
+        setZoom((value) => Math.min(1.8, Math.max(.35, value - event.deltaY * .001)))
+      }}
+      onDragOver={(event) => { if (isEditing) event.preventDefault() }}
+      onDrop={(event) => {
+        if (!isEditing || !onExternalDrop) return
+        event.preventDefault()
+        const urls = [event.dataTransfer.getData('text/uri-list'), event.dataTransfer.getData('text/plain')]
+          .flatMap(value => value.split(/\r?\n/)).filter(value => /^https?:\/\//i.test(value))
+        onExternalDrop({ urls: [...new Set(urls)], files: [...event.dataTransfer.files] })
+      }}
     >
       <div
         className="absolute left-0 top-0 will-change-transform"
-        style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0)` }}
+        style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`, transformOrigin: '0 0' }}
       >
         {showSearch && <div
           data-canvas-search
@@ -342,11 +377,11 @@ export function InfiniteCanvas({
                 width: px.width,
                 height: px.height,
                 opacity: hit ? 1 : 0.25,
-                scale: isDragged ? 1.045 : 1,
+                scale: isDragged ? 1.045 : selectedWidgetIds.includes(w.id) ? 1.018 : 1,
                 zIndex: isDragged ? 40 : 1,
                 boxShadow: isDragged
                   ? '0 18px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)'
-                  : '0 0px 0px rgba(0,0,0,0)',
+                  : selectedWidgetIds.includes(w.id) ? '0 12px 30px rgba(0,0,0,.12)' : '0 0px 0px rgba(0,0,0,0)',
               }}
               transition={{
                 type: 'spring',
@@ -391,6 +426,8 @@ export function InfiniteCanvas({
               {isEditing && selectedWidgetId === w.id && !editingWidgetId && !isDragged && (
                 <WidgetEditOverlay
                   widget={w}
+                  onEdit={() => onOpenEdit(w.id)}
+                  onDuplicate={() => onDuplicateWidget?.(w.id)}
                   onDelete={() => onRemoveWidget(w.id)}
                   onSizeChange={(size) => {
                     const next = resolveCanvasResize(widgets, w.id, size, showSearch)
@@ -413,6 +450,12 @@ export function InfiniteCanvas({
       </div>
 
       {onAutoLayout && null}
+
+      <div data-canvas-chrome className="fixed right-6 top-6 z-[1000] flex items-center gap-1 rounded-full border border-white/70 bg-white/75 p-1 shadow-lg backdrop-blur-xl">
+        <button className="size-8 rounded-full hover:bg-black/5" onClick={() => setZoom((value) => Math.max(.35, value - .1))}>−</button>
+        <button className="min-w-12 rounded-full px-2 text-xs font-semibold" onClick={() => { setZoom(1); centeredVersion.current = null }}>{Math.round(zoom * 100)}%</button>
+        <button className="size-8 rounded-full hover:bg-black/5" onClick={() => setZoom((value) => Math.min(1.8, value + .1))}>＋</button>
+      </div>
 
       <AnimatePresence>
         {lightbox && lightboxImage && (

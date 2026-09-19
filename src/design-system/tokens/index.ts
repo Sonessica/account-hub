@@ -100,6 +100,7 @@ import { radii, semanticRadii } from './radii'
 import { duration, easing, transitions, semanticTransitions, keyframes } from './transitions'
 import { zIndex, semanticZIndex } from './z-index'
 import { breakpoints, mediaQueries, bentoGridBreakpoints, containerWidths } from './breakpoints'
+export { motionTokens } from './motion'
 
 /**
  * 所有设计令牌的聚合对象

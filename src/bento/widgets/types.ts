@@ -63,6 +63,10 @@ export interface BaseWidgetConfig {
     x?: number
     /** Grid row origin on infinite canvas */
     y?: number
+    entityId?: string
+    locked?: boolean
+    hidden?: boolean
+    variantKey?: string
 }
 
 // ============ Link Widget ============

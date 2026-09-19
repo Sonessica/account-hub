@@ -4,15 +4,16 @@
  * Footer: settings + auto-layout + edit/view toggle.
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import { Gear, PencilSimple, Check, Shuffle } from 'phosphor-react'
 
 export const EditorFooter: React.FC<{
     isEditing?: boolean
     onToggleEdit?: () => void
     onOpenSettings?: () => void
-    onAutoLayout?: () => void
+    onAutoLayout?: (mode?: 'compact' | 'balanced' | 'organic' | 'rows' | 'columns' | 'focus') => void
 }> = ({ isEditing = false, onToggleEdit, onOpenSettings, onAutoLayout }) => {
+    const [layoutsOpen, setLayoutsOpen] = useState(false)
     return (
         <div
             className="fixed bottom-6 left-6 z-[10000] flex items-center gap-2 rounded-2xl border border-white/50 bg-white/85 p-2 shadow-lg backdrop-blur-md"
@@ -34,7 +35,8 @@ export const EditorFooter: React.FC<{
                 {isEditing && onAutoLayout && (
                     <button
                         type="button"
-                        onClick={onAutoLayout}
+                        onClick={() => onAutoLayout?.('balanced')}
+                        onContextMenu={(event) => { event.preventDefault(); setLayoutsOpen(true) }}
                         className="flex items-center gap-2 rounded-full bg-black/5 px-4 py-2 text-[13px] font-semibold text-black/70 transition hover:bg-black/10"
                         aria-label="Auto layout"
                     >
@@ -42,6 +44,9 @@ export const EditorFooter: React.FC<{
                         自动布局
                     </button>
                 )}
+                {layoutsOpen && <div className="absolute bottom-full left-10 mb-2 grid grid-cols-2 gap-1 rounded-2xl bg-black/90 p-2 text-xs text-white shadow-xl">
+                    {(['compact', 'balanced', 'organic', 'rows', 'columns', 'focus'] as const).map(mode => <button key={mode} className="rounded-lg px-3 py-2 capitalize hover:bg-white/15" onClick={() => { onAutoLayout?.(mode); setLayoutsOpen(false) }}>{mode}</button>)}
+                </div>}
 
                 <button
                     type="button"

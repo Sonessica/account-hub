@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { readEditor, saveEditor, type EditorSnapshot } from '@/lib/server/editor-db'
+import { listEditorVersions, readEditor, saveEditor, type EditorSnapshot } from '@/lib/server/editor-db'
 
 export const runtime = 'nodejs'
 const MAX_SNAPSHOT_BYTES = 20_000_000
@@ -14,6 +14,7 @@ function getSpace(request: Request) {
 export async function GET(request: Request) {
   const space = getSpace(request)
   if (!space) return NextResponse.json({ error: 'Invalid space' }, { status: 400 })
+  if (new URL(request.url).searchParams.get('history') === '1') return NextResponse.json({ versions: listEditorVersions(space) }, { headers: { 'Cache-Control': 'no-store' } })
   return NextResponse.json({ snapshot: readEditor(space) }, { headers: { 'Cache-Control': 'no-store' } })
 }
 

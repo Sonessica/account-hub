@@ -28,6 +28,8 @@ function normalizeWidgets(value: unknown) {
   })
 }
 
+export interface EditorVersion { id: number; space: string; revision: number; action: string; snapshot: EditorSnapshot; createdAt: string }
+
 function getDatabase() {
   if (database) return database
   const file = resolve(process.env.ACCOUNT_HUB_DB_PATH || '/app/data/account-hub.sqlite')
@@ -41,6 +43,33 @@ function getDatabase() {
       revision INTEGER NOT NULL,
       snapshot TEXT NOT NULL,
       updated_at TEXT NOT NULL
+    )
+  `)
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS editor_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      space TEXT NOT NULL,
+      revision INTEGER NOT NULL,
+      action TEXT NOT NULL DEFAULT 'Changed canvas',
+      snapshot TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS editor_versions_space_created ON editor_versions(space, created_at DESC);
+    CREATE TABLE IF NOT EXISTS hub_entities (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      data TEXT NOT NULL,
+      tags TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS custom_spaces (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      label TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      visible INTEGER NOT NULL DEFAULT 1,
+      config TEXT NOT NULL DEFAULT '{}'
     )
   `)
   database.exec(`
@@ -83,6 +112,11 @@ export function saveEditor(snapshot: EditorSnapshot, expectedRevision: number, s
     const revision = expectedRevision + 1
     const updatedAt = new Date().toISOString()
     const normalized = { ...snapshot, widgets: normalizeWidgets(snapshot.widgets) }
+    if (existing) {
+      const previous = readEditor(space)
+      if (previous) db.prepare(`INSERT INTO editor_versions (space, revision, action, snapshot, created_at) VALUES (?, ?, ?, ?, ?)`)
+        .run(space, previous.revision, 'Changed canvas', JSON.stringify(previous), updatedAt)
+    }
     if (space === 'home') {
       db.prepare(`INSERT INTO editor_state (id, revision, snapshot, updated_at)
         VALUES (1, ?, ?, ?)
@@ -102,4 +136,9 @@ export function saveEditor(snapshot: EditorSnapshot, expectedRevision: number, s
     db.exec('ROLLBACK')
     throw error
   }
+}
+
+export function listEditorVersions(space = 'home', limit = 30): EditorVersion[] {
+  const rows = getDatabase().prepare(`SELECT id, space, revision, action, snapshot, created_at FROM editor_versions WHERE space = ? ORDER BY id DESC LIMIT ?`).all(space, limit) as { id: number; space: string; revision: number; action: string; snapshot: string; created_at: string }[]
+  return rows.map(row => ({ id: row.id, space: row.space, revision: row.revision, action: row.action, snapshot: JSON.parse(row.snapshot), createdAt: row.created_at }))
 }

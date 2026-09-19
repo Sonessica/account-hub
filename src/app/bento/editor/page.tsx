@@ -2,11 +2,16 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 
-import { EditorToolbar, useEditor, EditorFooter } from '@/bento/editor'
+import { EditorToolbar, useEditor, EditorFooter, CommandPalette } from '@/bento/editor'
 import { SettingsModal } from '@/bento/editor/SettingsModal'
-import { InfiniteCanvas, assignCanvasPositions, autoLayoutFromCenter } from '@/bento/editor/InfiniteCanvas'
+import { InfiniteCanvas, assignCanvasPositions } from '@/bento/editor/InfiniteCanvas'
+import { autoLayoutWidgets, type AutoLayoutMode } from '@/bento/editor/canvasPlacement'
 import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
 import { RadialNavigation } from '@/components/site/RadialNavigation'
+import { resolveCanvasDrop } from '@/bento/editor/canvasPlacement'
+import type { WidgetConfig } from '@/bento/widgets/types'
+import { createImageWidgetConfig, createLinkWidgetConfig } from '@/bento/widgets'
+import { uploadImage } from '@/lib/client/upload-image'
 
 // ============ Editor View Wrapper ============
 
@@ -26,7 +31,7 @@ const EditorView: React.FC<{ children: React.ReactNode; space: string }> = ({ ch
 
 // ============ Editor Content ============
 
-const EditorContent: React.FC<{ centerVersion: number; showSearch: boolean }> = ({ centerVersion, showSearch }) => {
+const EditorContent: React.FC<{ centerVersion: number; showSearch: boolean; space: string }> = ({ centerVersion, showSearch, space }) => {
     const {
         widgets,
         selectedWidgetId,
@@ -35,10 +40,62 @@ const EditorContent: React.FC<{ centerVersion: number; showSearch: boolean }> = 
         removeWidget,
         updateWidget,
         reorderWidgets,
+        undo,
+        redo,
+        duplicateWidget,
+        addWidget,
     } = useEditor()
     const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
+    const [selectedWidgetIds, setSelectedWidgetIds] = useState<string[]>([])
     const draggingIdRef = useRef<string | null>(null)
     const repairedOnce = useRef(false)
+    const clipboard = useRef<WidgetConfig | null>(null)
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (!isEditing || /input|textarea|select/i.test((event.target as HTMLElement)?.tagName || '')) return
+            const command = event.ctrlKey || event.metaKey
+            if (command && event.key.toLowerCase() === 'z') {
+                event.preventDefault()
+                if (event.shiftKey) redo()
+                else undo()
+                return
+            }
+            if (command && event.key.toLowerCase() === 'd' && selectedWidgetId) {
+                event.preventDefault(); duplicateWidget(selectedWidgetId); return
+            }
+            if (command && event.key.toLowerCase() === 'a') {
+                event.preventDefault(); setSelectedWidgetIds(widgets.map((widget) => widget.id)); setSelectedWidgetId(widgets[0]?.id || null); return
+            }
+            if (command && event.key.toLowerCase() === 'c' && selectedWidgetId) {
+                event.preventDefault()
+                clipboard.current = structuredClone(widgets.find((widget) => widget.id === selectedWidgetId) || null)
+                return
+            }
+            if (command && event.key.toLowerCase() === 'v' && clipboard.current) {
+                event.preventDefault()
+                duplicateWidget(clipboard.current.id)
+                return
+            }
+            if ((event.key === 'Delete' || event.key === 'Backspace') && selectedWidgetId) {
+                event.preventDefault()
+                const ids = selectedWidgetIds.length ? selectedWidgetIds : [selectedWidgetId]
+                ids.forEach(removeWidget); setSelectedWidgetIds([]); return
+            }
+            if (event.key === 'Escape') { setSelectedWidgetId(null); return }
+            if (selectedWidgetId && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+                event.preventDefault()
+                const widget = widgets.find((item) => item.id === selectedWidgetId)
+                if (!widget || widget.locked) return
+                const step = event.shiftKey ? 2 : 1
+                const x = (widget.x ?? 0) + (event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0)
+                const y = (widget.y ?? 0) + (event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0)
+                reorderWidgets(resolveCanvasDrop(widgets, widget.id, x, y, showSearch))
+            }
+        }
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
+    }, [duplicateWidget, isEditing, redo, removeWidget, reorderWidgets, selectedWidgetId, selectedWidgetIds, setSelectedWidgetId, showSearch, undo, widgets])
 
     // Repair once after load, then only when a widget lacks x,y (new card).
     // Never rewrite coordinates while a card is being dragged.
@@ -59,8 +116,13 @@ const EditorContent: React.FC<{ centerVersion: number; showSearch: boolean }> = 
             isEditing={isEditing}
             onUpdateWidget={updateWidget}
             onRemoveWidget={removeWidget}
-            onSelect={setSelectedWidgetId}
+            onSelect={(id) => { setSelectedWidgetId(id); setSelectedWidgetIds(id ? [id] : []) }}
             selectedWidgetId={selectedWidgetId}
+            selectedWidgetIds={selectedWidgetIds}
+            onToggleSelection={(id) => {
+                setSelectedWidgetIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+                setSelectedWidgetId(id)
+            }}
             onOpenEdit={(id) => setEditingWidgetId(id || null)}
             editingWidgetId={editingWidgetId}
             onDragStateChange={(id) => { draggingIdRef.current = id }}
@@ -71,6 +133,15 @@ const EditorContent: React.FC<{ centerVersion: number; showSearch: boolean }> = 
             }}
             centerVersion={centerVersion}
             showSearch={showSearch}
+            onDuplicateWidget={duplicateWidget}
+            space={space}
+            onExternalDrop={async ({ urls, files }) => {
+                urls.forEach((url) => addWidget(createLinkWidgetConfig(url, '1x1')))
+                for (const file of files.filter((item) => item.type.startsWith('image/'))) {
+                    const uploaded = await uploadImage(file)
+                    addWidget(createImageWidgetConfig(uploaded, '1x1'))
+                }
+            }}
         />
     )
 }
@@ -88,21 +159,23 @@ const HubShell: React.FC<{ space: 'home' | 'notes' | 'gallery' | 'bookmarks' }> 
     } = useEditor()
     const [showSettings, setShowSettings] = useState(false)
     const [centerVersion, setCenterVersion] = useState(0)
+    const applyAutoLayout = (mode: AutoLayoutMode = 'balanced') => {
+        if (!isEditing || !widgets.length) return
+        reorderWidgets(autoLayoutWidgets(widgets, mode, space === 'home'))
+        setCenterVersion((version) => version + 1)
+    }
 
     return (
         <>
-            <EditorContent centerVersion={centerVersion} showSearch={space === 'home'} />
+            <EditorContent centerVersion={centerVersion} showSearch={space === 'home'} space={space} />
             <EditorFooter
                 isEditing={isEditing}
                 onToggleEdit={() => setIsEditing(!isEditing)}
                 onOpenSettings={() => setShowSettings(true)}
-                onAutoLayout={() => {
-                    if (!isEditing || !widgets.length) return
-                    reorderWidgets(autoLayoutFromCenter(widgets, space === 'home'))
-                    setCenterVersion((version) => version + 1)
-                }}
+                onAutoLayout={applyAutoLayout}
             />
-            <RadialNavigation hidden={isEditing || showSettings} />
+            <CommandPalette onAutoLayout={applyAutoLayout} />
+            <RadialNavigation hidden={showSettings} compact={isEditing} />
             {showSettings && (
                 <SettingsModal
                     profile={profile}

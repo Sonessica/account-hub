@@ -13,6 +13,7 @@ export * from './types'
 
 // Registry & Utils
 export * from './registry'
+export * from './widgetRegistry'
 export * from './icons'
 
 // Link Widget

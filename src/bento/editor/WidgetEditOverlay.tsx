@@ -26,6 +26,8 @@ interface WidgetEditOverlayProps {
     onSizeChange: (size: WidgetSize) => void
     onUpdate?: (updates: Partial<WidgetConfig>) => void
     onClose?: () => void
+    onEdit?: () => void
+    onDuplicate?: () => void
 }
 
 // ============ Delete Icon ============
@@ -125,6 +127,8 @@ export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
     onSizeChange,
     onUpdate,
     onClose,
+    onEdit,
+    onDuplicate,
 }) => {
     const [rect, setRect] = React.useState<DOMRect | null>(null)
     const [isVisible, setIsVisible] = React.useState(false)
@@ -261,6 +265,16 @@ export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
         >
+            <motion.div
+                className="fixed z-[9999] flex items-center gap-1 rounded-xl border border-white/10 bg-black/90 p-1.5 text-xs text-white shadow-xl backdrop-blur-xl"
+                style={{ left: rect.left + rect.width / 2, top: rect.top - 48, transform: 'translateX(-50%)' }}
+                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+            >
+                <button className="rounded-lg px-3 py-1.5 hover:bg-white/15" onClick={onEdit}>编辑</button>
+                <button className="rounded-lg px-3 py-1.5 hover:bg-white/15" onClick={onDuplicate}>复制</button>
+                <button className="rounded-lg px-3 py-1.5 hover:bg-white/15" onClick={() => onUpdate?.({ locked: !widget.locked })}>{widget.locked ? '解锁' : '锁定'}</button>
+                <button className="rounded-lg px-3 py-1.5 hover:bg-white/15" onClick={() => onUpdate?.({ hidden: true })}>隐藏</button>
+            </motion.div>
             {/* Delete Button - Top Left relative to widget */}
             <motion.button
                 onClick={(e) => {

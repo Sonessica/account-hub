@@ -68,6 +68,11 @@ interface EditorContextValue {
     removeWidget: (id: string) => void
     updateWidget: (id: string, updates: Partial<WidgetConfig>) => void
     reorderWidgets: (newOrder: WidgetConfig[]) => void
+    undo: () => void
+    redo: () => void
+    canUndo: boolean
+    canRedo: boolean
+    duplicateWidget: (id: string) => void
     // Profile management
     profile: ProfileData
     updateProfile: (updates: Partial<ProfileData>) => void
@@ -147,9 +152,18 @@ export const EditorProvider: React.FC<{
     const [siteSettings, setSiteSettings] = useState<SiteSettings>(
         () => normalizeSiteSettings(initialSnapshot?.siteSettings || DEFAULT_SITE_SETTINGS)
     )
+    const undoStack = useRef<WidgetConfig[][]>([])
+    const redoStack = useRef<WidgetConfig[][]>([])
+    const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false })
 
     // Current widgets based on view mode
     const widgets = viewMode === 'desktop' ? desktopWidgets : mobileWidgets
+
+    const recordHistory = useCallback((snapshot: WidgetConfig[]) => {
+        undoStack.current = [...undoStack.current.slice(-49), structuredClone(snapshot)]
+        redoStack.current = []
+        setHistoryState({ canUndo: true, canRedo: false })
+    }, [])
 
     // ============ Sync content properties when switching view modes ============
     
@@ -578,6 +592,7 @@ export const EditorProvider: React.FC<{
     // ============ Unified Widget Operations (operate on current view mode) ============
 
     const addWidget = useCallback((widget: WidgetConfig) => {
+        recordHistory(widgets)
         // External canvas: single list (desktopWidgets is source of truth)
         if (isExternal) {
             addDesktopWidget(widget)
@@ -609,18 +624,20 @@ export const EditorProvider: React.FC<{
                 addDesktopWidget(desktopWidget)
             }
         }
-    }, [isExternal, viewMode, addDesktopWidget, addMobileWidget, layoutIndependent])
+    }, [isExternal, viewMode, addDesktopWidget, addMobileWidget, layoutIndependent, recordHistory, widgets])
 
     const removeWidget = useCallback((id: string) => {
+        recordHistory(widgets)
         if (isExternal) {
             removeDesktopWidget(id)
             return
         }
         removeDesktopWidget(id)
         removeMobileWidget(id)
-    }, [isExternal, removeDesktopWidget, removeMobileWidget])
+    }, [isExternal, removeDesktopWidget, removeMobileWidget, recordHistory, widgets])
 
     const updateWidget = useCallback((id: string, updates: Partial<WidgetConfig>) => {
+        recordHistory(widgets)
         if (isExternal) {
             updateDesktopWidget(id, updates)
             return
@@ -661,9 +678,11 @@ export const EditorProvider: React.FC<{
                 }
             }
         }
-    }, [isExternal, viewMode, updateDesktopWidget, updateMobileWidget, desktopWidgets, mobileWidgets, markLayoutIndependent])
+    }, [isExternal, viewMode, updateDesktopWidget, updateMobileWidget, desktopWidgets, mobileWidgets, markLayoutIndependent, recordHistory, widgets])
 
     const reorderWidgets = useCallback((newOrder: WidgetConfig[]) => {
+        if (JSON.stringify(newOrder) === JSON.stringify(widgets)) return
+        recordHistory(widgets)
         if (isExternal) {
             reorderDesktopWidgets(newOrder)
             return
@@ -674,7 +693,36 @@ export const EditorProvider: React.FC<{
         } else {
             reorderMobileWidgets(newOrder)
         }
-    }, [isExternal, viewMode, reorderDesktopWidgets, reorderMobileWidgets, markLayoutIndependent])
+    }, [isExternal, viewMode, reorderDesktopWidgets, reorderMobileWidgets, markLayoutIndependent, recordHistory, widgets])
+
+    const applyHistorySnapshot = useCallback((snapshot: WidgetConfig[]) => {
+        if (isExternal || viewMode === 'desktop') setDesktopWidgets(structuredClone(snapshot))
+        else setMobileWidgets(structuredClone(snapshot))
+        setSelectedWidgetId(null)
+        setHistoryState({ canUndo: undoStack.current.length > 0, canRedo: redoStack.current.length > 0 })
+    }, [isExternal, viewMode])
+
+    const undo = useCallback(() => {
+        const snapshot = undoStack.current.pop()
+        if (!snapshot) return
+        redoStack.current.push(structuredClone(widgets))
+        applyHistorySnapshot(snapshot)
+        setHistoryState({ canUndo: undoStack.current.length > 0, canRedo: true })
+    }, [applyHistorySnapshot, widgets])
+
+    const redo = useCallback(() => {
+        const snapshot = redoStack.current.pop()
+        if (!snapshot) return
+        undoStack.current.push(structuredClone(widgets))
+        applyHistorySnapshot(snapshot)
+        setHistoryState({ canUndo: true, canRedo: redoStack.current.length > 0 })
+    }, [applyHistorySnapshot, widgets])
+
+    const duplicateWidget = useCallback((id: string) => {
+        const source = widgets.find((widget) => widget.id === id)
+        if (!source) return
+        addWidget({ ...structuredClone(source), id: crypto.randomUUID(), x: (source.x ?? 0) + 1, y: (source.y ?? 0) + 1 })
+    }, [addWidget, widgets])
 
     // ============ Layout Sync ============
 
@@ -754,6 +802,11 @@ export const EditorProvider: React.FC<{
                 removeWidget,
                 updateWidget,
                 reorderWidgets,
+                undo,
+                redo,
+                canUndo: historyState.canUndo,
+                canRedo: historyState.canRedo,
+                duplicateWidget,
                 profile,
                 updateProfile,
                 siteSettings,

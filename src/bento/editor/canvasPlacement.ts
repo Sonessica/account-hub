@@ -120,6 +120,26 @@ export function autoLayoutFromCenter(widgets: WidgetConfig[], reserveSearch = tr
   return widgets.map((widget) => ({ ...widget, ...positions.get(widget.id)! }))
 }
 
+export type AutoLayoutMode = 'compact' | 'balanced' | 'organic' | 'rows' | 'columns' | 'focus'
+
+export function autoLayoutWidgets(widgets: WidgetConfig[], mode: AutoLayoutMode = 'balanced', reserveSearch = true) {
+  if (mode === 'balanced' || mode === 'organic' || mode === 'focus') return autoLayoutFromCenter(widgets, reserveSearch)
+  const occupied = searchCells(reserveSearch)
+  const positions = new Map<string, Point>()
+  const ordered = mode === 'compact' ? [...widgets].sort((a, b) => area(b) - area(a)) : widgets
+  for (const widget of ordered) {
+    let selected: Point | null = null
+    for (let lane = 0; !selected; lane++) {
+      for (let cross = -32; cross <= 32; cross++) {
+        const point = mode === 'columns' ? { x: lane, y: cross } : { x: cross, y: lane }
+        if (isFree(occupied, point, widget.size)) { selected = point; reserve(occupied, point, widget.size); break }
+      }
+    }
+    positions.set(widget.id, selected || { x: 0, y: 0 })
+  }
+  return widgets.map(widget => ({ ...widget, ...positions.get(widget.id)! }))
+}
+
 function distanceFromAnchor(point: Point, size: WidgetSize, reserveSearch: boolean) {
   const span = SPANS[size]
   const anchorCols = reserveSearch ? SEARCH_COLS : 1

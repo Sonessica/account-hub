@@ -1,4 +1,5 @@
 export * from './EditorContext'
+export { CommandPalette } from './CommandPalette'
 export * from './EditorToolbar'
 export { WidgetEditOverlay } from './WidgetEditOverlay'
 export * from './ProfileSection'
