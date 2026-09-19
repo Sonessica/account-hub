@@ -694,3 +694,70 @@ svg[data-phosphor-icon] path:nth-of-type(2) {
     @apply hidden!;
   }
 }
+
+/* Wheel-driven page transitions. The navigation wheel is captured separately
+   so it stays anchored while the page plane rotates beneath it. */
+::view-transition-group(root) {
+  animation-duration: 620ms;
+  animation-timing-function: cubic-bezier(.19, 1, .22, 1);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 620ms;
+  animation-timing-function: cubic-bezier(.19, 1, .22, 1);
+  mix-blend-mode: normal;
+  background: #f5f5f7;
+}
+
+html[data-space-transition="forward"]::view-transition-old(root) {
+  animation-name: space-out-forward;
+}
+
+html[data-space-transition="forward"]::view-transition-new(root) {
+  animation-name: space-in-forward;
+}
+
+html[data-space-transition="backward"]::view-transition-old(root) {
+  animation-name: space-out-backward;
+}
+
+html[data-space-transition="backward"]::view-transition-new(root) {
+  animation-name: space-in-backward;
+}
+
+::view-transition-group(space-wheel) {
+  z-index: 10001;
+  animation-duration: 620ms;
+}
+
+::view-transition-old(space-wheel),
+::view-transition-new(space-wheel) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@keyframes space-out-forward {
+  to { opacity: 0; transform: translate(7vw, -7vh) scale(.96); filter: blur(2px); }
+}
+
+@keyframes space-in-forward {
+  from { opacity: 0; transform: translate(-7vw, 7vh) scale(1.035); filter: blur(2px); }
+}
+
+@keyframes space-out-backward {
+  to { opacity: 0; transform: translate(-7vw, 7vh) scale(.96); filter: blur(2px); }
+}
+
+@keyframes space-in-backward {
+  from { opacity: 0; transform: translate(7vw, -7vh) scale(1.035); filter: blur(2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(space-wheel) {
+    animation-duration: 1ms;
+  }
+}

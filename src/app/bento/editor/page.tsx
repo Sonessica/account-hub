@@ -10,10 +10,13 @@ import { RadialNavigation } from '@/components/site/RadialNavigation'
 
 // ============ Editor View Wrapper ============
 
-const EditorView: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const EditorView: React.FC<{ children: React.ReactNode; space: string }> = ({ children, space }) => {
     const { isEditing } = useEditor()
     return (
-        <div className="relative min-h-screen bg-[#F5F5F7] transition-colors duration-500">
+        <div
+            className="relative min-h-screen bg-[#F5F5F7] transition-colors duration-500"
+            data-space-canvas={space}
+        >
             {children}
             {isEditing && <EditorToolbar />}
         </div>
@@ -120,7 +123,7 @@ export function BentoEditorPage({
 }) {
     return (
         <PersistentEditorProvider space={space} showSplash={showSplash}>
-            <EditorView>
+            <EditorView space={space}>
                 <HubShell />
             </EditorView>
         </PersistentEditorProvider>
