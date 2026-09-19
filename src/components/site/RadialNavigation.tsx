@@ -6,16 +6,14 @@ import { type CSSProperties } from 'react'
 import styles from './RadialNavigation.module.css'
 
 const items = [
-  { href: '/', label: 'HOME', name: '首页' },
+  { href: '/bento/editor', label: 'HOME', name: '首页' },
   { href: '/notes', label: 'NOTES', name: '笔记' },
   { href: '/gallery', label: 'GALLERY', name: '图集' },
   { href: '/bookmarks', label: 'SAVED', name: '收藏' },
 ] as const
 
 function isActive(pathname: string, href: string) {
-  return href === '/'
-    ? pathname === '/' || pathname === '/bento/editor'
-    : pathname.startsWith(href)
+  return pathname === href || pathname.startsWith(`${href}/`)
 }
 
 export function RadialNavigation({ hidden = false }: { hidden?: boolean }) {

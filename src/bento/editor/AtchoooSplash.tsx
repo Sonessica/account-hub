@@ -4,10 +4,11 @@
  * ATCHOOO brand splash — filled geometric wordmark + yellow/blue curtain reveal.
  */
 
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import './AtchoooSplash.css'
 
 const SPLASH_TOTAL_MS = 2100
+const SPLASH_SESSION_KEY = 'atchooo-splash-played'
 
 /**
  * Filled geometric ATCHOOO. Letters share one drawing system:
@@ -63,7 +64,17 @@ function BrandMark({ ink, bg }: { ink: string; bg: string }) {
 export function AtchoooSplash({ onDone }: { onDone?: () => void }) {
     const [phase, setPhase] = useState<'draw' | 'reveal' | 'exit'>('draw')
 
-    useEffect(() => {
+    useLayoutEffect(() => {
+        try {
+            if (window.sessionStorage.getItem(SPLASH_SESSION_KEY) === '1') {
+                onDone?.()
+                return
+            }
+            window.sessionStorage.setItem(SPLASH_SESSION_KEY, '1')
+        } catch {
+            // If storage is unavailable, keep the splash as a safe fallback.
+        }
+
         const t1 = window.setTimeout(() => setPhase('reveal'), 1200)
         const t2 = window.setTimeout(() => setPhase('exit'), 1680)
         const t3 = window.setTimeout(() => onDone?.(), SPLASH_TOTAL_MS)
