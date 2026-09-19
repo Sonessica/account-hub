@@ -4,7 +4,25 @@ Account Hub `0.7.0` 是一个基于 [OpenBento](https://github.com/bravohenry/op
 
 当前版本面向桌面浏览器和个人使用场景。访客模式与编辑模式使用同一份 NAS SQLite 数据，修改会自动保存。
 
-<img width="3840" height="1907" alt="Account Hub" src="https://github.com/user-attachments/assets/1803e637-843a-487f-8f68-24904eb4971e" />
+## 示例页面
+
+### 首页
+
+<img width="3840" height="1919" alt="image" src="https://github.com/user-attachments/assets/306c7b6f-2d36-4dc9-b323-22985c179beb" />
+
+### 搜索
+
+<img width="3840" height="1919" alt="image" src="https://github.com/user-attachments/assets/53157f5d-2204-4881-bb4a-dfac41d048f3" />
+
+### 导航轮盘
+
+<img width="3840" height="1919" alt="image" src="https://github.com/user-attachments/assets/652d2c58-8b72-46a5-b62b-9f74382e9a93" />
+
+### LightBox
+
+<img width="3840" height="1919" alt="image" src="https://github.com/user-attachments/assets/f7ded36b-97e1-4ee4-bc04-51105f69c16e" />
+
+
 
 ## 页面与入口
 
