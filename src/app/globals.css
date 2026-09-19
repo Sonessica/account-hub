@@ -697,67 +697,77 @@ svg[data-phosphor-icon] path:nth-of-type(2) {
 
 /* Wheel-driven page transitions. The navigation wheel is captured separately
    so it stays anchored while the page plane rotates beneath it. */
-::view-transition-group(root) {
-  animation-duration: 620ms;
-  animation-timing-function: cubic-bezier(.19, 1, .22, 1);
-}
-
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 620ms;
-  animation-timing-function: cubic-bezier(.19, 1, .22, 1);
+  animation: none;
   mix-blend-mode: normal;
   background: #f5f5f7;
 }
 
-html[data-space-transition="forward"]::view-transition-old(root) {
+::view-transition-group(space-content) {
+  animation-duration: 480ms;
+  animation-timing-function: cubic-bezier(.19, 1, .22, 1);
+}
+
+::view-transition-old(space-content),
+::view-transition-new(space-content) {
+  animation-duration: 480ms;
+  animation-timing-function: cubic-bezier(.19, 1, .22, 1);
+  mix-blend-mode: normal;
+  background: #f5f5f7;
+  will-change: transform, opacity;
+}
+
+html[data-space-transition="forward"]::view-transition-old(space-content) {
   animation-name: space-out-forward;
 }
 
-html[data-space-transition="forward"]::view-transition-new(root) {
+html[data-space-transition="forward"]::view-transition-new(space-content) {
   animation-name: space-in-forward;
 }
 
-html[data-space-transition="backward"]::view-transition-old(root) {
+html[data-space-transition="backward"]::view-transition-old(space-content) {
   animation-name: space-out-backward;
 }
 
-html[data-space-transition="backward"]::view-transition-new(root) {
+html[data-space-transition="backward"]::view-transition-new(space-content) {
   animation-name: space-in-backward;
 }
 
-::view-transition-group(space-wheel) {
+::view-transition-group(space-wheel),
+::view-transition-group(space-controls) {
   z-index: 10001;
-  animation-duration: 620ms;
+  animation-duration: 480ms;
 }
 
 ::view-transition-old(space-wheel),
-::view-transition-new(space-wheel) {
+::view-transition-new(space-wheel),
+::view-transition-old(space-controls),
+::view-transition-new(space-controls) {
   animation: none;
   mix-blend-mode: normal;
 }
 
 @keyframes space-out-forward {
-  to { opacity: 0; transform: translate(7vw, -7vh) scale(.96); filter: blur(2px); }
+  to { opacity: 0; transform: translate3d(4.5vw, -4.5vh, 0) scale(.98); }
 }
 
 @keyframes space-in-forward {
-  from { opacity: 0; transform: translate(-7vw, 7vh) scale(1.035); filter: blur(2px); }
+  from { opacity: 0; transform: translate3d(-4.5vw, 4.5vh, 0) scale(1.02); }
 }
 
 @keyframes space-out-backward {
-  to { opacity: 0; transform: translate(-7vw, 7vh) scale(.96); filter: blur(2px); }
+  to { opacity: 0; transform: translate3d(-4.5vw, 4.5vh, 0) scale(.98); }
 }
 
 @keyframes space-in-backward {
-  from { opacity: 0; transform: translate(7vw, -7vh) scale(1.035); filter: blur(2px); }
+  from { opacity: 0; transform: translate3d(4.5vw, -4.5vh, 0) scale(1.02); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(root),
-  ::view-transition-old(root),
-  ::view-transition-new(root),
-  ::view-transition-group(space-wheel) {
+  ::view-transition-group(space-content),
+  ::view-transition-group(space-wheel),
+  ::view-transition-group(space-controls) {
     animation-duration: 1ms;
   }
 }

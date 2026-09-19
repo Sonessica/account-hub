@@ -15,12 +15,36 @@ type Snapshot = {
 type Stored = Snapshot & { revision: number; updatedAt: string }
 type GateState = 'splash' | 'import' | 'ready' | 'error'
 type SaveState = 'saved' | 'saving' | 'error' | 'conflict'
+type EditorSpace = 'home' | 'notes' | 'gallery' | 'bookmarks'
+
+const EDITOR_SPACES: EditorSpace[] = ['home', 'notes', 'gallery', 'bookmarks']
+const snapshotCache = new Map<EditorSpace, Stored | null>()
+const snapshotRequests = new Map<EditorSpace, Promise<Stored | null>>()
 
 const LAYOUT_KEY = 'openbento-widgets'
 const PROFILE_KEY = 'openbento-profile'
 const defaultProfile: ProfileData = {
   name: 'ATCHOOO',
   description: 'Personal hub',
+}
+
+function cacheSnapshot(space: EditorSpace, snapshot: Stored | null) {
+  snapshotCache.set(space, snapshot)
+}
+
+function fetchSnapshot(space: EditorSpace) {
+  const running = snapshotRequests.get(space)
+  if (running) return running
+  const request = fetch(`/api/private/editor?space=${encodeURIComponent(space)}`, { cache: 'no-store' })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Load failed: ${response.status}`)
+      const data = await response.json() as { snapshot: Stored | null }
+      cacheSnapshot(space, data.snapshot)
+      return data.snapshot
+    })
+    .finally(() => { snapshotRequests.delete(space) })
+  snapshotRequests.set(space, request)
+  return request
 }
 
 function normalizeWidgets(value: unknown): WidgetConfig[] {
@@ -87,6 +111,7 @@ function PersistenceSync({ initial, space }: { initial: Stored | null; space: st
         const result = await response.json() as { snapshot: Stored }
         revision.current = result.snapshot.revision
         savedHash.current = hash
+        cacheSnapshot(space as EditorSpace, result.snapshot)
         const remaining = 700 - (Date.now() - startedAt)
         if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining))
       }
@@ -143,22 +168,24 @@ export function PersistentEditorProvider({
   showSplash = true,
 }: {
   children: React.ReactNode
-  space?: 'home' | 'notes' | 'gallery' | 'bookmarks'
+  space?: EditorSpace
   showSplash?: boolean
 }) {
-  const [state, setState] = useState<GateState>('splash')
+  const hasCachedSnapshot = snapshotCache.has(space)
+  const [state, setState] = useState<GateState>(hasCachedSnapshot ? 'ready' : 'splash')
   const [message, setMessage] = useState('')
-  const [initial, setInitial] = useState<Stored | null>(null)
+  const [initial, setInitial] = useState<Stored | null>(() => snapshotCache.get(space) ?? null)
   const [draft, setDraft] = useState<Snapshot | null>(null)
   const [splashDone, setSplashDone] = useState(!showSplash)
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(`/api/private/editor?space=${encodeURIComponent(space)}`, { cache: 'no-store' })
-      if (!response.ok) throw new Error(`Load failed: ${response.status}`)
-      const data = await response.json() as { snapshot: Stored | null }
-      if (data.snapshot) {
-        setInitial(data.snapshot)
+      if (snapshotCache.has(space)) {
+        return
+      }
+      const snapshot = await fetchSnapshot(space)
+      if (snapshot) {
+        setInitial(snapshot)
         setState('ready')
       } else {
         const local = space === 'home' ? localSnapshot() : null
@@ -171,7 +198,21 @@ export function PersistentEditorProvider({
     }
   }, [space])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load() }, 0)
+    return () => window.clearTimeout(timer)
+  }, [load])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      for (const candidate of EDITOR_SPACES) {
+        if (candidate !== space && !snapshotCache.has(candidate)) {
+          void fetchSnapshot(candidate).catch(() => undefined)
+        }
+      }
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [space])
 
   async function saveInitial(snapshot: Snapshot) {
     setMessage('')
@@ -188,6 +229,7 @@ export function PersistentEditorProvider({
         return
       }
       const result = await response.json() as { snapshot: Stored }
+      cacheSnapshot(space, result.snapshot)
       setInitial(result.snapshot)
       setState('ready')
     } catch {

@@ -16,7 +16,10 @@ export const EditorFooter: React.FC<{
     return (
         <div
             className="fixed bottom-6 left-6 z-[10000] flex items-center gap-2 rounded-2xl border border-white/50 bg-white/85 p-2 shadow-lg backdrop-blur-md"
-            style={{ fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif' }}
+            style={{
+                fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                viewTransitionName: 'space-controls',
+            }}
         >
             <button
                 type="button"

@@ -16,6 +16,7 @@ const EditorView: React.FC<{ children: React.ReactNode; space: string }> = ({ ch
         <div
             className="relative min-h-screen bg-[#F5F5F7] transition-colors duration-500"
             data-space-canvas={space}
+            style={{ viewTransitionName: 'space-content' }}
         >
             {children}
             {isEditing && <EditorToolbar />}
@@ -100,7 +101,7 @@ const HubShell: React.FC = () => {
                     setCenterVersion((version) => version + 1)
                 }}
             />
-            <RadialNavigation hidden={isEditing} />
+            <RadialNavigation hidden={isEditing || showSettings} />
             {showSettings && (
                 <SettingsModal
                     profile={profile}
@@ -122,7 +123,7 @@ export function BentoEditorPage({
     showSplash?: boolean
 }) {
     return (
-        <PersistentEditorProvider space={space} showSplash={showSplash}>
+        <PersistentEditorProvider key={space} space={space} showSplash={showSplash}>
             <EditorView space={space}>
                 <HubShell />
             </EditorView>
