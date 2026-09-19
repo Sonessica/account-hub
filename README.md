@@ -1,48 +1,225 @@
 # Account Hub
 
-基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的自托管个人 Bento 页面。当前产品是**单页、共享数据**的版本：访客和编辑者访问同一个画布，卡片、个人资料与站点设置保存在 NAS 的 SQLite 中，而非浏览器本地或 Supabase。
-<img width="3840" height="1907" alt="image" src="https://github.com/user-attachments/assets/1803e637-843a-487f-8f68-24904eb4971e" />
+Account Hub `0.7.0` 是一个基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的、自托管的个人数字主页。它以 Bento 无限画布为核心，通过 HOME、NOTES、GALLERY、BOOKMARKS 四个独立 Space 管理和展示链接、图片、文字与位置等内容。
 
-## 当前功能
+当前版本面向桌面浏览器和个人使用场景。访客模式与编辑模式使用同一份 NAS SQLite 数据，修改会自动保存。
 
-- 无限画布：平移、拖动卡片、碰撞排位、交换/推挤和「自动布局」；仅渲染视口附近的卡片。
-- 卡片：链接、图片（一组图集最多 9 张：固定/随机封面，多种切换特效，查看页双击浏览）、文字、地图、分区标题；支持尺寸与内容编辑。图片可批量上传，查看模式下可打开大图并切换。
-- 页脚「编辑 / 完成」切换模式；编辑模式下单击选择、双击打开编辑面板，底部工具栏添加卡片。
-- 修改自动保存到 SQLite；保存中显示动画，失败可重试，跨浏览器旧版本写入会提示冲突。
-- 首次遇到空数据库时，可选择导入当前浏览器遗留的 OpenBento 卡片，或从空白开始。导入不会删除原浏览器数据。
-- 设置面板可修改个人资料、头像；其中的 JSON 导入/导出**仅包含个人资料，不是完整卡片备份**。
+<img width="3840" height="1907" alt="Account Hub" src="https://github.com/user-attachments/assets/1803e637-843a-487f-8f68-24904eb4971e" />
 
-主入口是 `/`；旧路径 `/bento/editor` 和 `/editor` 会跳转到这里。现行编辑器及其读写 API **没有密码门禁**：能访问该站点的人也能修改共享页面。仓库中仍保留旧版 Supabase 多用户页面/API 与会话接口，但它们不是当前编辑器的数据通道。不要把旧登录页面或 `.env` 中的管理密码理解为当前编辑器的访问保护。
+## 页面与入口
 
-## 技术与数据
+| 地址 | Space | 说明 |
+| --- | --- | --- |
+| `/` | HOME | 主画布，包含居中的卡片搜索框 |
+| `/notes` | NOTES | 独立的笔记画布，不显示搜索框 |
+| `/gallery` | GALLERY | 独立的图集画布，不显示搜索框 |
+| `/bookmarks` | BOOKMARKS | 独立的收藏画布，不显示搜索框 |
+| `/bento/editor`、`/editor` | HOME | 兼容旧地址，重定向至 `/` |
 
-Next.js 16、React 19、TypeScript；服务端使用 Node.js 22 的 `node:sqlite`，图片由 `sharp` 转为 WebP。Docker Compose 将宿主机的 `./data` 挂载到容器 `/app/data`：
+四个 Space 分别保存卡片布局、画布平移位置和缩放比例。首次打开网站会显示黄蓝渐变开屏动画；通过轮盘在 Space 之间切换时不会重复播放。
+
+## 浏览模式
+
+- 按住画布空白区域拖动，可以自由平移无限画布。
+- HOME 的搜索框会按标题、URL、文字内容和卡片类型即时筛选卡片。
+- 图片或图集卡片可双击进入 Lightbox。
+- Lightbox 支持左右方向键、鼠标滚轮和缩略图切换图片，按 `Esc` 或点击背景关闭。
+- 页面只渲染当前视口附近的卡片；大量卡片不会全部常驻 DOM。
+- 被标记为隐藏的卡片不会在浏览模式显示，但仍可在编辑模式找到。
+
+## Radial Navigation 2.0
+
+右下角磨砂玻璃轮盘是四个 Space 的主要导航入口。
+
+- HOME → NOTES → GALLERY → BOOKMARKS → HOME 无限循环，反向同样循环。
+- 鼠标移入轮盘后显示完整内容；闲置时自动降低透明度和视觉权重。
+- 编辑模式下轮盘收缩成低存在感 Orb，悬停后恢复完整尺寸。
+- 在轮盘上滚动时先改变预选项，停止约 650 ms 后确认进入。
+- 点击轮盘项目可以立即选择并进入。
+- 第一次使用显示 `SCROLL TO SELECT`，成功操作一次后改为当前 Space 和序号提示。
+- 页面切换使用方向一致的 View Transition；不支持或启用 reduced motion 时自动退化为普通切换。
+
+轮盘键盘操作：
+
+| 按键 | 操作 |
+| --- | --- |
+| `↑` / `←` | 预选上一个 Space |
+| `↓` / `→` | 预选下一个 Space |
+| `Enter` | 进入当前预选 Space |
+| `Esc` | 取消预选，恢复当前 Space |
+
+输入框、文本框或下拉框获得焦点时，轮盘不会拦截这些按键。
+
+## 编辑模式
+
+点击左下角“编辑”进入编辑模式，点击“完成”回到浏览模式。设置和编辑入口固定在页面左下角，不参与 Space 切换动画。
+
+### 添加卡片
+
+编辑模式下的添加工具栏支持：
+
+- Link：粘贴或输入 URL，自动识别 GitHub、YouTube、X/Twitter、Spotify 等平台，并生成对应链接卡片。
+- Image：上传图片；服务端使用 `sharp` 转换、压缩为 WebP，SQLite 只保存媒体路径。
+- Text：添加文字/便签卡片。
+- Map：添加地图卡片并搜索位置。
+- Section：添加分区标题卡片。
+
+按 `Ctrl/Cmd + K` 可以打开 Universal Add / Command Palette：
+
+- 粘贴 URL 后按 `Enter`，创建智能链接卡片。
+- 输入普通文字后按 `Enter`，创建文字卡片。
+- 执行自动布局。
+- 切换四个 Space。
+- 搜索并定位当前 Space 中已有的卡片。
+- 按 `Esc` 或点击面板外关闭。
+
+### 外部拖放
+
+编辑模式下可以把内容直接拖入画布：
+
+- 从浏览器拖入 URL：自动创建链接卡片。
+- 拖入一张本地图片：上传并创建图片卡片。
+- 同时拖入多张图片：逐张上传并创建多个图片卡片。
+
+单张图片上限为 20 MB。上传完成后图片作为独立 WebP 文件保存在媒体目录，不会以 base64 写入页面快照。
+
+### 选择与操作卡片
+
+- 单击卡片：选择卡片并显示浮动 Context Toolbar。
+- `Shift + 单击`：加入或移出多选集合。
+- 双击卡片：打开统一的 `WidgetEditorPanel` 内容编辑面板。
+- 点击画布空白区域：取消选择并开始平移画布。
+- 选中卡片会轻微抬升并增强阴影，不使用粗描边。
+
+Context Toolbar 当前提供编辑、复制、锁定/解锁、隐藏和删除。尺寸选择器支持 `1×1`、`2×1`、`1×2`、`2×2`；地图卡片额外提供位置搜索。锁定卡片不会响应方向键移动。隐藏卡片仍会在编辑模式显示。
+
+### 拖动、碰撞与 Resize
+
+- 按住卡片拖动，卡片会抬升并使用 Spring 跟随指针。
+- 放下时坐标吸附到 Bento Grid，不使用自由像素定位。
+- 空白目标位置直接落位；同尺寸卡片落在对方原点时可交换位置。
+- 覆盖一个或多个卡片时，阻挡卡片会被推到最近的合法位置。
+- Resize 同样执行完整碰撞检测，并自动推挤被新尺寸覆盖的卡片。
+- HOME 的搜索框保留区域始终参与碰撞检测，卡片不会覆盖搜索框。
+- 其他三个 Space 没有搜索保留区，可以使用画布原点。
+- 所有布局结果都会检查卡片完整占用区域，避免非法重叠。
+
+### 自动布局
+
+点击左下角“自动布局”执行 Balanced 布局。右键点击该按钮可选择 Compact、Balanced、Organic、Rows、Columns 或 Focus。
+
+布局操作会进入 Undo/Redo 历史。Balanced 会围绕 HOME 搜索框或其他 Space 的原点均衡铺开，结果是确定性的，不再随机留下单侧大片空白。
+
+### 画布缩放和视角
+
+- `Ctrl/Cmd + 鼠标滚轮`：在 35%–180% 范围缩放画布。
+- 右上角 `−`、百分比、`＋` 控件：调整缩放比例或恢复到 100%。
+- 每个 Space 的 Pan 与 Zoom 保存在浏览器 localStorage，返回时恢复上次视角。
+- Widget Registry 已预留 compact、standard、detail 尺寸变体定义。
+
+## 编辑快捷键
+
+以下快捷键仅在编辑模式、且输入控件没有获得焦点时生效：
+
+| 快捷键 | 操作 |
+| --- | --- |
+| `Ctrl/Cmd + K` | 打开或关闭 Universal Add / Command Palette |
+| `Ctrl/Cmd + Z` | 撤销 |
+| `Ctrl/Cmd + Shift + Z` | 重做 |
+| `Ctrl/Cmd + D` | 复制当前卡片 |
+| `Ctrl/Cmd + C` | 将当前卡片复制到编辑器剪贴板 |
+| `Ctrl/Cmd + V` | 粘贴编辑器剪贴板中的卡片 |
+| `Ctrl/Cmd + A` | 选择当前 Space 的全部卡片 |
+| `Delete` / `Backspace` | 删除当前选择；多选时批量删除 |
+| `Esc` | 取消卡片选择 |
+| `←` `→` `↑` `↓` | 将当前卡片移动一个网格单位，并处理碰撞 |
+| `Shift + 方向键` | 将当前卡片移动两个网格单位，并处理碰撞 |
+
+Undo/Redo 使用统一快照历史，覆盖创建、删除、复制、内容更新、移动、Resize 和自动布局。刷新页面后会开始新的浏览器会话历史；服务端另行保留版本快照。
+
+## 卡片类型
+
+### Link
+
+- URL、标题、副标题、CTA、图标、背景色、菜单色和背景图。
+- 根据 URL 自动检测平台并使用平台默认信息。
+- 支持 GitHub、YouTube、X/Twitter、Instagram、TikTok、Spotify、LinkedIn、Facebook、Pinterest、Threads、Discord、Telegram、Twitch、Medium、Reddit 等平台及通用链接。
+
+### Image / Gallery
+
+- 单个图片卡片可保存最多 9 张图片。
+- 支持批量上传、拖动排序、删除图片、双击设置封面。
+- 支持固定封面或随机封面。
+- 支持 Crossfade、Blur、Drift、Ken Burns、Reveal、Shutter 和随机切换效果。
+- 支持封面切换间隔、标题、副标题与 cover/contain 显示模式。
+- 浏览模式提供 Lightbox 和缩略图导航。
+
+### Text
+
+- 支持 note、quote、plain 变体。
+- 可编辑正文、署名和 Emoji。
+
+### Map
+
+- 保存地点名称、经纬度、Zoom 与地图样式。
+- 编辑状态提供位置搜索。
+
+### Section Title
+
+- 用于画布分区标题。
+- 使用固定布局，不显示普通卡片的尺寸选择器。
+
+## Widget Registry 与空间架构
+
+`src/bento/widgets/widgetRegistry.ts` 描述 Link、Image、Text 和 Map 的类型、名称、图标、默认尺寸、允许尺寸、创建函数、操作集合和尺寸变体。
+
+`src/lib/space-config.ts` 统一描述 Space 的 ID、名称、Label、地址、顺序、可见性、主题与 Anchor。SQLite 已建立 `hub_entities` 和 `custom_spaces` 表，为 Entity → Widget → Space 和自定义 Space 的后续界面提供迁移基础；当前公开导航仍固定显示四个内置 Space。
+
+## 保存、冲突与版本历史
+
+- 卡片、个人资料和站点设置在修改后约 1.5 秒自动保存。
+- 保存中右上角显示状态动画；网络失败时保留当前状态并提供重试。
+- 保存采用 revision 乐观锁；其他浏览器已经写入新版时会提示冲突并要求刷新。
+- 服务端每次覆盖已有快照前，会把旧版本写入 `editor_versions`。
+- `GET /api/private/editor?space=home&history=1` 可读取最近 30 个版本快照。
+- 版本历史已经持久化，但尚未提供可视化 Preview / Restore 面板。
+
+首次遇到空数据库时，HOME 可选择导入浏览器中遗留的 OpenBento 卡片，或从空白开始。导入不会删除原 localStorage 数据。
+
+设置面板可修改个人资料和头像。设置中的 JSON 导入/导出只包含个人资料，不是完整的卡片与 Space 备份。
+
+## 数据存储
+
+服务端使用 Node.js 22 的 `node:sqlite`。Docker Compose 将宿主机的 `./data` 挂载到容器 `/app/data`。
 
 | 内容 | 默认位置 |
 | --- | --- |
-| 页面快照 | `./data/account-hub.sqlite` |
-| 上传图片 | `./data/media/` |
-| 浏览器旧卡片 | 浏览器 localStorage，仅用于首次迁移 |
+| Space 快照、revision、版本历史 | `./data/account-hub.sqlite` |
+| 上传并压缩后的 WebP 图片 | `./data/media/` |
+| 每个 Space 的 Pan / Zoom | 浏览器 localStorage |
+| 首次迁移使用的旧卡片 | 浏览器 localStorage |
 
-页面快照请求上限为 20 MB，单张上传图片上限为 20 MB。SQLite 采用 WAL 模式，运行时可能出现 `-wal`、`-shm` 文件。详细备份与恢复见 [NAS 数据说明](docs/NAS_SQLITE_PERSISTENCE.md)。
+页面快照请求上限为 20 MB，单张原始上传图片上限为 20 MB。SQLite 使用 WAL 模式，运行时可能出现 `account-hub.sqlite-wal` 和 `account-hub.sqlite-shm`。备份、恢复与一致性要求见 [NAS 数据说明](docs/NAS_SQLITE_PERSISTENCE.md)。
 
 ## NAS / Docker 部署
 
-需要 Docker Compose、可用的 `nas-frontend` Docker 网络，以及可写的 `data/` 目录。当前 `docker-compose.yml` 针对 `https://account.atchooo.com:2096` 配置；换域名时须同时检查 Compose、Dockerfile 中的 `NEXT_PUBLIC_APP_URL`，以及反向代理配置。
+需要 Docker Compose、外部 Docker 网络 `nas-frontend` 和可写的 `data/` 目录。
 
 ```bash
 cp .env.example .env
-# 编辑 .env，设置 ACCOUNT_HUB_ADMIN_PASSWORD（至少 6 字符）
-# 与 ACCOUNT_HUB_SESSION_SECRET（至少 32 字符）
+# 设置至少 6 字符的 ACCOUNT_HUB_ADMIN_PASSWORD
+# 以及至少 32 字符的 ACCOUNT_HUB_SESSION_SECRET
 docker compose up -d --build
 docker compose logs --tail=50 openbento-review
 ```
 
-这两个变量是**当前 Compose 启动所要求的值**，旧会话接口会使用它们；设置它们不会给当前 `/bento/editor` 加密码。不要提交 `.env`、`data/` 或备份。部署更新前先做一致性数据库备份，且不要使用 `docker compose down -v` 删除卷。首次部署如无 `nas-frontend` 网络，需先建立网络或调整 Compose；公网访问还依赖现有反向代理，并非 Compose 自动配置。
+当前 `docker-compose.yml` 的公开地址为 `https://account.atchooo.com:2096`。更换域名时需要同步检查 Compose、Dockerfile 中的 `NEXT_PUBLIC_APP_URL` 以及反向代理。
+
+部署更新前应先备份 SQLite 和 `data/media`。不要使用 `docker compose down -v` 删除数据卷，也不要提交 `.env`、`data/` 或部署备份。
 
 ## 本地开发
 
-需要 Node.js 22+。在 Windows PowerShell 中：
+需要 Node.js 22+。
 
 ```powershell
 npm ci
@@ -52,9 +229,7 @@ $env:NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
 npm run dev
 ```
 
-打开 `http://localhost:3000`。`data/` 不入库；需要调试旧版会话接口时，再按 [.env.example](.env.example) 配置其密码和密钥。
-
-提交前可运行：
+打开 `http://localhost:3000`。提交前运行：
 
 ```bash
 npm run typecheck
@@ -63,22 +238,50 @@ npm run test:canvas
 npm run build
 ```
 
-构建脚本使用 Webpack。`npm run migrate:images` 是针对旧快照中内嵌 base64 图片的**一次性、会修改数据库的迁移脚本**，不是常规启动步骤；运行前请先备份。
+`npm run migrate:images` 用于把旧快照中的 base64 图片迁移为独立文件。它会修改数据库，只应执行一次，并且必须先备份。
+
+## 技术栈
+
+- Next.js 16、React 19、TypeScript 5。
+- Framer Motion、Tailwind CSS 4。
+- Node.js `node:sqlite`、Sharp WebP 图片处理。
+- MapLibre GL、Docker Compose。
+
+## 当前权限边界
+
+当前主页是单用户、共享编辑数据的实现，现行编辑器和 `/api/private/editor`、`/api/private/media` 没有密码门禁。能访问站点的人也能进入编辑模式并修改页面。
+
+仓库仍保留旧版 Supabase 多用户页面、认证 API 和会话接口，但它们不驱动当前主页。`.env` 中的管理密码与会话密钥是 Compose 和旧会话接口所需配置，不会自动保护当前编辑器。
+
+## 当前尚未提供完整界面的能力
+
+以下能力已有部分数据结构或扩展点，但不能视为当前可操作功能：
+
+- Collection、空间展开和 Platform Group。
+- 自定义 Space 的新增、重命名、排序、隐藏和删除界面。
+- Accounts、Bookmarks、Notes、Projects 的独立内容库管理界面。
+- Entity Library 的 CRUD 界面。
+- 可视化版本历史 Preview / Restore。
+- 框选、多选对齐/分布与集合化操作。
+- 手机端专用布局和移动端交互优化。
 
 ## 代码与文档入口
 
 | 路径 | 作用 |
 | --- | --- |
-| `src/app/page.tsx` | 当前页面入口（复用 Bento 编辑页） |
-| `src/bento/editor/` | 无限画布、交互、编辑器、自动保存 |
-| `src/bento/widgets/` | 卡片类型与渲染 |
-| `src/app/api/private/`、`src/lib/server/` | 当前 SQLite 快照与图片接口 |
-| `src/app/auth/`、`src/app/api/auth/`、`src/lib/supabase/` | 保留的旧版多用户路径；不驱动当前编辑器 |
+| `src/app/page.tsx` | HOME 入口 |
+| `src/app/notes`、`gallery`、`bookmarks` | 其他三个 Space 入口 |
+| `src/bento/editor/` | 无限画布、编辑器、历史、自动布局、Command Palette |
+| `src/bento/widgets/` | Widget 类型、渲染、平台识别与 Registry |
+| `src/components/site/RadialNavigation.tsx` | 轮盘导航与 Space Transition |
+| `src/lib/space-config.ts` | SpaceConfig 与 Anchor 定义 |
+| `src/app/api/private/` | SQLite 快照与媒体接口 |
+| `src/lib/server/editor-db.ts` | SQLite schema、保存和版本历史 |
 | `docs/NAS_SQLITE_PERSISTENCE.md` | 数据、备份、恢复与迁移 |
-| `docs/LOCATION_SEARCH.md` | 地图位置搜索的当前实现 |
+| `docs/LOCATION_SEARCH.md` | 地图位置搜索 |
 
-各模块的 `.folder.md` 是开发时使用的局部代码地图；维护约定见 [FRACTAL_DOCS.md](FRACTAL_DOCS.md)。以实际代码为准，改动架构时同步更新对应文档。
+各模块的 `.folder.md` 是开发时使用的局部代码地图；维护约定见 [FRACTAL_DOCS.md](FRACTAL_DOCS.md)。实际行为以代码为准，修改架构时应同步更新对应文档。
 
-## 许可证
+## License
 
-`package.json` 标注为 MIT，但仓库当前没有独立的 `LICENSE` 文件；对外再分发前应核实上游及本项目的许可文本。
+`package.json` 当前标注为 MIT，但仓库没有独立 `LICENSE` 文件。对外分发前应补充并核实上游与本项目的许可文本。
