@@ -18,15 +18,23 @@ type ViewTransitionDocument = Document & {
 
 function waitForCanvas(space: string) {
   return new Promise<void>((resolve) => {
-    const started = performance.now()
-    const check = () => {
-      if (document.querySelector(`[data-space-canvas="${space}"]`) || performance.now() - started > 1800) {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-        return
-      }
-      requestAnimationFrame(check)
+    const selector = `[data-space-canvas="${space}"]`
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      observer.disconnect()
+      window.clearTimeout(timeout)
+      // Timers and mutation observers continue during the transition's DOM
+      // update phase; animation frames intentionally do not.
+      window.setTimeout(resolve, 24)
     }
-    check()
+    const observer = new MutationObserver(() => {
+      if (document.querySelector(selector)) finish()
+    })
+    const timeout = window.setTimeout(finish, 1200)
+    observer.observe(document.body, { childList: true, subtree: true })
+    if (document.querySelector(selector)) finish()
   })
 }
 
@@ -66,10 +74,11 @@ export function RadialNavigation({ hidden = false }: { hidden?: boolean }) {
       router.push(target.href)
       await waitForCanvas(target.space)
     })
-    void transition.finished.finally(() => {
+    const cleanup = () => {
       transitioning.current = false
       setTransitionDirection(null)
-    })
+    }
+    void transition.finished.then(cleanup, cleanup)
   }
 
   if (hidden) return null
