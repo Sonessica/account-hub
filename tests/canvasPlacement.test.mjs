@@ -117,6 +117,14 @@ test('auto-layout is deterministic and balanced around the search box', () => {
   assert.ok(Math.abs(-minY - maxY) <= 2)
 })
 
+test('search-free spaces can occupy the canvas origin', () => {
+  const widgets = [card('center', '1x1', 0, 0), card('next', '1x1', 1, 0)]
+  assert.equal(isValidCanvasLayout(widgets, false), true)
+  const laidOut = autoLayoutFromCenter(widgets, false)
+  assert.equal(isValidCanvasLayout(laidOut, false), true)
+  assert.ok(laidOut.some((widget) => widget.x === 0 && widget.y === 0))
+})
+
 test('growing a card pushes every card covered by its new footprint', () => {
   const widgets = [
     card('growing', '1x1', 5, 2),

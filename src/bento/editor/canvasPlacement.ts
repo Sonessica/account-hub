@@ -18,8 +18,9 @@ const pointOf = (widget: WidgetConfig): Point => ({ x: widget.x!, y: widget.y! }
 const hasPoint = (widget: WidgetConfig) => Number.isSafeInteger(widget.x) && Number.isSafeInteger(widget.y)
 const area = (widget: WidgetConfig) => SPANS[widget.size].cols * SPANS[widget.size].rows
 
-function searchCells() {
+function searchCells(reserveSearch = true) {
   const occupied = new Set<string>()
+  if (!reserveSearch) return occupied
   for (let x = 0; x < SEARCH_COLS; x++) {
     for (let y = 0; y < SEARCH_ROWS; y++) occupied.add(key(x, y))
   }
@@ -45,8 +46,8 @@ function reserve(occupied: Set<string>, point: Point, size: WidgetSize) {
   forEachCell(point, size, (x, y) => occupied.add(key(x, y)))
 }
 
-function occupiedBy(widgets: WidgetConfig[], excluded: Set<string> = new Set()) {
-  const occupied = searchCells()
+function occupiedBy(widgets: WidgetConfig[], excluded: Set<string> = new Set(), reserveSearch = true) {
+  const occupied = searchCells(reserveSearch)
   for (const widget of widgets) {
     if (!excluded.has(widget.id) && hasPoint(widget)) reserve(occupied, pointOf(widget), widget.size)
   }
@@ -78,8 +79,8 @@ function firstFree(occupied: Set<string>, size: WidgetSize, origin: Point, rever
   throw new Error('Unreachable: the infinite canvas has no free cells')
 }
 
-export function isValidCanvasLayout(widgets: WidgetConfig[]) {
-  const occupied = searchCells()
+export function isValidCanvasLayout(widgets: WidgetConfig[], reserveSearch = true) {
+  const occupied = searchCells(reserveSearch)
   for (const widget of widgets) {
     if (!hasPoint(widget) || !isFree(occupied, pointOf(widget), widget.size)) return false
     reserve(occupied, pointOf(widget), widget.size)
@@ -87,8 +88,8 @@ export function isValidCanvasLayout(widgets: WidgetConfig[]) {
   return true
 }
 
-export function assignCanvasPositions(widgets: WidgetConfig[]): WidgetConfig[] {
-  const occupied = searchCells()
+export function assignCanvasPositions(widgets: WidgetConfig[], reserveSearch = true): WidgetConfig[] {
+  const occupied = searchCells(reserveSearch)
   const positions = new Map<string, Point>()
   const pending: WidgetConfig[] = []
 
@@ -105,34 +106,38 @@ export function assignCanvasPositions(widgets: WidgetConfig[]): WidgetConfig[] {
   return widgets.map((widget) => ({ ...widget, ...positions.get(widget.id)! }))
 }
 
-export function autoLayoutFromCenter(widgets: WidgetConfig[]): WidgetConfig[] {
-  const occupied = searchCells()
+export function autoLayoutFromCenter(widgets: WidgetConfig[], reserveSearch = true): WidgetConfig[] {
+  const occupied = searchCells(reserveSearch)
   const order = widgets.map((widget, index) => ({ widget, index }))
     .sort((a, b) => area(b.widget) - area(a.widget) || a.index - b.index)
   const positions = new Map<string, Point>()
   const placed: { point: Point; size: WidgetSize }[] = []
   for (const { widget } of order) {
-    const point = balancedFreePosition(occupied, widget.size, placed)
+    const point = balancedFreePosition(occupied, widget.size, placed, reserveSearch)
     positions.set(widget.id, point)
     placed.push({ point, size: widget.size })
   }
   return widgets.map((widget) => ({ ...widget, ...positions.get(widget.id)! }))
 }
 
-function distanceFromSearch(point: Point, size: WidgetSize) {
+function distanceFromAnchor(point: Point, size: WidgetSize, reserveSearch: boolean) {
   const span = SPANS[size]
+  const anchorCols = reserveSearch ? SEARCH_COLS : 1
+  const anchorRows = reserveSearch ? SEARCH_ROWS : 1
   const right = point.x + span.cols - 1
   const bottom = point.y + span.rows - 1
-  const dx = point.x >= SEARCH_COLS ? point.x - SEARCH_COLS : right < 0 ? -right - 1 : -1
-  const dy = point.y >= SEARCH_ROWS ? point.y - SEARCH_ROWS : bottom < 0 ? -bottom - 1 : -1
+  const dx = point.x >= anchorCols ? point.x - anchorCols : right < 0 ? -right - 1 : 0
+  const dy = point.y >= anchorRows ? point.y - anchorRows : bottom < 0 ? -bottom - 1 : 0
   return Math.max(0, dx, dy)
 }
 
-function balanceScore(placed: { point: Point; size: WidgetSize }[], point: Point, size: WidgetSize) {
+function balanceScore(placed: { point: Point; size: WidgetSize }[], point: Point, size: WidgetSize, reserveSearch: boolean) {
+  const anchorCols = reserveSearch ? SEARCH_COLS : 1
+  const anchorRows = reserveSearch ? SEARCH_ROWS : 1
   let minX = 0
-  let maxX = SEARCH_COLS - 1
+  let maxX = anchorCols - 1
   let minY = 0
-  let maxY = SEARCH_ROWS - 1
+  let maxY = anchorRows - 1
   for (const item of [...placed, { point, size }]) {
     const span = SPANS[item.size]
     minX = Math.min(minX, item.point.x)
@@ -141,14 +146,14 @@ function balanceScore(placed: { point: Point; size: WidgetSize }[], point: Point
     maxY = Math.max(maxY, item.point.y + span.rows - 1)
   }
   const left = -minX
-  const right = maxX - (SEARCH_COLS - 1)
+  const right = maxX - (anchorCols - 1)
   const top = -minY
-  const bottom = maxY - (SEARCH_ROWS - 1)
+  const bottom = maxY - (anchorRows - 1)
   return [
     Math.abs(left - right) + Math.abs(top - bottom),
     (maxX - minX + 1) * (maxY - minY + 1),
-    Math.abs((minX + maxX) / 2 - (SEARCH_COLS - 1) / 2),
-    Math.abs((minY + maxY) / 2 - (SEARCH_ROWS - 1) / 2),
+    Math.abs((minX + maxX) / 2 - (anchorCols - 1) / 2),
+    Math.abs((minY + maxY) / 2 - (anchorRows - 1) / 2),
     point.y,
     point.x,
   ]
@@ -165,16 +170,19 @@ function balancedFreePosition(
   occupied: Set<string>,
   size: WidgetSize,
   placed: { point: Point; size: WidgetSize }[],
+  reserveSearch: boolean,
 ) {
   const span = SPANS[size]
+  const anchorCols = reserveSearch ? SEARCH_COLS : 1
+  const anchorRows = reserveSearch ? SEARCH_ROWS : 1
   for (let distance = 0; ; distance++) {
     let best: Point | null = null
     let bestScore: number[] | null = null
-    for (let y = -distance - span.rows; y <= SEARCH_ROWS + distance; y++) {
-      for (let x = -distance - span.cols; x <= SEARCH_COLS + distance; x++) {
+    for (let y = -distance - span.rows; y <= anchorRows + distance; y++) {
+      for (let x = -distance - span.cols; x <= anchorCols + distance; x++) {
         const point = { x, y }
-        if (distanceFromSearch(point, size) !== distance || !isFree(occupied, point, size)) continue
-        const score = balanceScore(placed, point, size)
+        if (distanceFromAnchor(point, size, reserveSearch) !== distance || !isFree(occupied, point, size)) continue
+        const score = balanceScore(placed, point, size, reserveSearch)
         if (!bestScore || scoreBefore(score, bestScore)) {
           best = point
           bestScore = score
@@ -202,7 +210,7 @@ function withPositions(widgets: WidgetConfig[], positions: Map<string, Point>) {
   })
 }
 
-export function resolveCanvasDrop(widgets: WidgetConfig[], id: string, x: number, y: number): WidgetConfig[] {
+export function resolveCanvasDrop(widgets: WidgetConfig[], id: string, x: number, y: number, reserveSearch = true): WidgetConfig[] {
   // Repair any pre-existing overlap before planning the drop. Every returned
   // layout is checked as a whole, including the search bar and all card cells.
   const placed = isValidCanvasLayout(widgets) ? widgets : assignCanvasPositions(widgets)
@@ -212,7 +220,7 @@ export function resolveCanvasDrop(widgets: WidgetConfig[], id: string, x: number
   const target = { x: Math.round(x), y: Math.round(y) }
   const others = placed.filter((widget) => widget.id !== id)
   const blockers = others.filter((widget) => overlaps(target, moving.size, widget))
-  const searchHit = !isFree(searchCells(), target, moving.size)
+  const searchHit = !isFree(searchCells(reserveSearch), target, moving.size)
 
   if (!searchHit && blockers.length === 0) {
     return withPositions(placed, new Map([[id, target]]))
@@ -227,7 +235,7 @@ export function resolveCanvasDrop(widgets: WidgetConfig[], id: string, x: number
       const swapped = withPositions(placed, new Map([
         [id, target], [other.id, pointOf(moving)],
       ]))
-      if (isValidCanvasLayout(swapped)) return swapped
+      if (isValidCanvasLayout(swapped, reserveSearch)) return swapped
     }
   }
 
@@ -235,7 +243,7 @@ export function resolveCanvasDrop(widgets: WidgetConfig[], id: string, x: number
     // Remove every direct blocker atomically, reserve the complete moving
     // footprint, then place blockers one by one in verified free rectangles.
     const excluded = new Set([id, ...blockers.map((widget) => widget.id)])
-    const occupied = occupiedBy(placed, excluded)
+    const occupied = occupiedBy(placed, excluded, reserveSearch)
     if (isFree(occupied, target, moving.size)) {
       reserve(occupied, target, moving.size)
       const positions = new Map<string, Point>([[id, target]])
@@ -243,19 +251,19 @@ export function resolveCanvasDrop(widgets: WidgetConfig[], id: string, x: number
         positions.set(blocker.id, firstFree(occupied, blocker.size, pointOf(blocker)))
       }
       const pushed = withPositions(placed, positions)
-      if (isValidCanvasLayout(pushed)) return pushed
+      if (isValidCanvasLayout(pushed, reserveSearch)) return pushed
     }
   }
 
   // Search-bar collisions (or an unexpected invalid plan) use the nearest
   // checked free rectangle. Never return the unchecked drop coordinates.
-  const occupied = occupiedBy(placed, new Set([id]))
+  const occupied = occupiedBy(placed, new Set([id]), reserveSearch)
   const fallback = firstFree(occupied, moving.size, target)
   return withPositions(placed, new Map([[id, fallback]]))
 }
 
-export function resolveCanvasResize(widgets: WidgetConfig[], id: string, size: WidgetSize): WidgetConfig[] {
-  const placed = isValidCanvasLayout(widgets) ? widgets : assignCanvasPositions(widgets)
+export function resolveCanvasResize(widgets: WidgetConfig[], id: string, size: WidgetSize, reserveSearch = true): WidgetConfig[] {
+  const placed = isValidCanvasLayout(widgets, reserveSearch) ? widgets : assignCanvasPositions(widgets, reserveSearch)
   const current = placed.find((widget) => widget.id === id)
   if (!current || current.size === size) return placed
 
@@ -263,20 +271,20 @@ export function resolveCanvasResize(widgets: WidgetConfig[], id: string, size: W
   const resized = { ...current, size } as WidgetConfig
   const others = placed.filter((widget) => widget.id !== id)
   const blockers = others.filter((widget) => overlaps(target, size, widget))
-  const searchHit = !isFree(searchCells(), target, size)
+  const searchHit = !isFree(searchCells(reserveSearch), target, size)
 
   if (!searchHit && blockers.length === 0) {
     return placed.map((widget) => widget.id === id ? resized : widget)
   }
 
   if (searchHit) {
-    const occupied = occupiedBy(placed, new Set([id]))
+    const occupied = occupiedBy(placed, new Set([id]), reserveSearch)
     const fallback = firstFree(occupied, size, target)
     return placed.map((widget) => widget.id === id ? { ...resized, ...fallback } : widget)
   }
 
   const excluded = new Set([id, ...blockers.map((widget) => widget.id)])
-  const occupied = occupiedBy(placed, excluded)
+  const occupied = occupiedBy(placed, excluded, reserveSearch)
   reserve(occupied, target, size)
   const positions = new Map<string, Point>([[id, target]])
   for (const blocker of [...blockers].sort((a, b) => area(b) - area(a))) {
@@ -286,5 +294,5 @@ export function resolveCanvasResize(widgets: WidgetConfig[], id: string, size: W
     placed.map((widget) => widget.id === id ? resized : widget),
     positions,
   )
-  return isValidCanvasLayout(next) ? next : assignCanvasPositions(next)
+  return isValidCanvasLayout(next, reserveSearch) ? next : assignCanvasPositions(next, reserveSearch)
 }

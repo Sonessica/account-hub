@@ -13,7 +13,7 @@ import { WidgetEditOverlay } from '@/bento/editor'
 import { WidgetEditorPanel } from '@/bento/editor'
 import type { GalleryImage, ImageWidgetConfig, WidgetConfig, WidgetSize } from '@/bento/widgets/types'
 import { WIDGET_SIZES } from '@/bento/widgets/types'
-import { resolveCanvasDrop, resolveCanvasResize, SEARCH_COLS, SEARCH_ROWS } from './canvasPlacement'
+import { resolveCanvasDrop, resolveCanvasResize, SEARCH_COLS } from './canvasPlacement'
 import { normalizeImageGallery, resolveCoverIndex } from '@/bento/widgets/image/gallery'
 
 const STEP = BENTO_UNIT + BENTO_GAP
@@ -54,6 +54,7 @@ type CanvasProps = {
   onAutoLayout?: () => void
   onWidgetsChange?: (widgets: WidgetConfig[]) => void
   centerVersion?: number
+  showSearch?: boolean
 }
 
 export function InfiniteCanvas({
@@ -69,6 +70,7 @@ export function InfiniteCanvas({
   onAutoLayout,
   onWidgetsChange,
   centerVersion = 0,
+  showSearch = true,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -99,14 +101,14 @@ export function InfiniteCanvas({
     const el = viewportRef.current
     if (!el || centeredVersion.current === centerVersion) return
     const rect = el.getBoundingClientRect()
-    const searchW = SEARCH_COLS * BENTO_UNIT + (SEARCH_COLS - 1) * BENTO_GAP
-    const searchH = SEARCH_ROWS * BENTO_UNIT
+    const searchW = showSearch ? SEARCH_COLS * BENTO_UNIT + (SEARCH_COLS - 1) * BENTO_GAP : BENTO_UNIT
+    const searchH = BENTO_UNIT
     setPan({
       x: rect.width / 2 - searchW / 2,
       y: rect.height / 2 - searchH / 2,
     })
     centeredVersion.current = centerVersion
-  }, [centerVersion])
+  }, [centerVersion, showSearch])
 
   useEffect(() => {
     const el = viewportRef.current
@@ -179,7 +181,7 @@ export function InfiniteCanvas({
       const dy = dragY.get()
       const cellX = Math.round((c.origX * STEP + dx) / STEP)
       const cellY = Math.round((c.origY * STEP + dy) / STEP)
-      const next = resolveCanvasDrop(widgets, c.id, cellX, cellY)
+      const next = resolveCanvasDrop(widgets, c.id, cellX, cellY, showSearch)
       const changed = next.some((widget, index) => widget.x !== widgets[index].x || widget.y !== widgets[index].y)
       if (changed && onWidgetsChange) onWidgetsChange(next)
       else if (changed) {
@@ -296,7 +298,7 @@ export function InfiniteCanvas({
         className="absolute left-0 top-0 will-change-transform"
         style={{ transform: `translate3d(${pan.x}px, ${pan.y}px, 0)` }}
       >
-        <div
+        {showSearch && <div
           data-canvas-search
           className="absolute z-20 flex items-center"
           style={{
@@ -314,7 +316,7 @@ export function InfiniteCanvas({
             className="atch-search-input h-full w-full"
             onPointerDown={(e) => e.stopPropagation()}
           />
-        </div>
+        </div>}
 
         {visibleWidgets.map((w) => {
           const x = typeof w.x === 'number' ? w.x : 0
@@ -391,7 +393,7 @@ export function InfiniteCanvas({
                   widget={w}
                   onDelete={() => onRemoveWidget(w.id)}
                   onSizeChange={(size) => {
-                    const next = resolveCanvasResize(widgets, w.id, size)
+                    const next = resolveCanvasResize(widgets, w.id, size, showSearch)
                     if (onWidgetsChange) onWidgetsChange(next)
                     else {
                       for (const widget of next) {

@@ -26,7 +26,7 @@ const EditorView: React.FC<{ children: React.ReactNode; space: string }> = ({ ch
 
 // ============ Editor Content ============
 
-const EditorContent: React.FC<{ centerVersion: number }> = ({ centerVersion }) => {
+const EditorContent: React.FC<{ centerVersion: number; showSearch: boolean }> = ({ centerVersion, showSearch }) => {
     const {
         widgets,
         selectedWidgetId,
@@ -46,12 +46,12 @@ const EditorContent: React.FC<{ centerVersion: number }> = ({ centerVersion }) =
         if (!widgets.length || draggingIdRef.current) return
         const missing = widgets.some((w) => typeof w.x !== 'number' || typeof w.y !== 'number')
         if (repairedOnce.current && !missing) return
-        const positioned = assignCanvasPositions(widgets)
+        const positioned = assignCanvasPositions(widgets, showSearch)
         repairedOnce.current = true
         if (positioned.some((w, i) => w.x !== widgets[i].x || w.y !== widgets[i].y)) {
             reorderWidgets(positioned)
         }
-    }, [widgets, reorderWidgets])
+    }, [widgets, reorderWidgets, showSearch])
 
     return (
         <InfiniteCanvas
@@ -70,13 +70,14 @@ const EditorContent: React.FC<{ centerVersion: number }> = ({ centerVersion }) =
                 reorderWidgets(next)
             }}
             centerVersion={centerVersion}
+            showSearch={showSearch}
         />
     )
 }
 
 // ============ Page Shell ============
 
-const HubShell: React.FC = () => {
+const HubShell: React.FC<{ space: 'home' | 'notes' | 'gallery' | 'bookmarks' }> = ({ space }) => {
     const {
         isEditing,
         setIsEditing,
@@ -90,14 +91,14 @@ const HubShell: React.FC = () => {
 
     return (
         <>
-            <EditorContent centerVersion={centerVersion} />
+            <EditorContent centerVersion={centerVersion} showSearch={space === 'home'} />
             <EditorFooter
                 isEditing={isEditing}
                 onToggleEdit={() => setIsEditing(!isEditing)}
                 onOpenSettings={() => setShowSettings(true)}
                 onAutoLayout={() => {
                     if (!isEditing || !widgets.length) return
-                    reorderWidgets(autoLayoutFromCenter(widgets))
+                    reorderWidgets(autoLayoutFromCenter(widgets, space === 'home'))
                     setCenterVersion((version) => version + 1)
                 }}
             />
@@ -125,7 +126,7 @@ export function BentoEditorPage({
     return (
         <PersistentEditorProvider key={space} space={space} showSplash={showSplash}>
             <EditorView space={space}>
-                <HubShell />
+                <HubShell space={space} />
             </EditorView>
         </PersistentEditorProvider>
     )
