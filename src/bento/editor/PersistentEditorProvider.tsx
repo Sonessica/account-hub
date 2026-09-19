@@ -53,7 +53,7 @@ function localSnapshot(): Snapshot | null {
   }
 }
 
-function PersistenceSync({ initial }: { initial: Stored | null }) {
+function PersistenceSync({ initial, space }: { initial: Stored | null; space: string }) {
   const { widgets, profile, siteSettings } = useEditor()
   const [status, setStatus] = useState<SaveState>('saved')
   const revision = useRef(initial?.revision || 0)
@@ -74,7 +74,7 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
         const hash = JSON.stringify(snapshot)
         const startedAt = Date.now()
         setStatus('saving')
-        const response = await fetch('/api/private/editor', {
+        const response = await fetch(`/api/private/editor?space=${encodeURIComponent(space)}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin', body: JSON.stringify({ revision: revision.current, snapshot }),
         })
@@ -97,7 +97,7 @@ function PersistenceSync({ initial }: { initial: Stored | null }) {
     } finally {
       running.current = false
     }
-  }, [])
+  }, [space])
 
   useEffect(() => {
     const timer = setTimeout(() => { hydrated.current = true }, 400)
@@ -137,23 +137,31 @@ function toEditorInitial(snapshot: Stored | null) {
   }
 }
 
-export function PersistentEditorProvider({ children }: { children: React.ReactNode }) {
+export function PersistentEditorProvider({
+  children,
+  space = 'home',
+  showSplash = true,
+}: {
+  children: React.ReactNode
+  space?: 'home' | 'notes' | 'gallery' | 'bookmarks'
+  showSplash?: boolean
+}) {
   const [state, setState] = useState<GateState>('splash')
   const [message, setMessage] = useState('')
   const [initial, setInitial] = useState<Stored | null>(null)
   const [draft, setDraft] = useState<Snapshot | null>(null)
-  const [splashDone, setSplashDone] = useState(false)
+  const [splashDone, setSplashDone] = useState(!showSplash)
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch('/api/private/editor', { cache: 'no-store' })
+      const response = await fetch(`/api/private/editor?space=${encodeURIComponent(space)}`, { cache: 'no-store' })
       if (!response.ok) throw new Error(`Load failed: ${response.status}`)
       const data = await response.json() as { snapshot: Stored | null }
       if (data.snapshot) {
         setInitial(data.snapshot)
         setState('ready')
       } else {
-        const local = localSnapshot()
+        const local = space === 'home' ? localSnapshot() : null
         if (local) { setDraft(local); setState('import') }
         else { setInitial(null); setState('ready') }
       }
@@ -161,14 +169,14 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
       setMessage(error instanceof Error ? error.message : '无法连接到 NAS 数据库')
       setState('error')
     }
-  }, [])
+  }, [space])
 
   useEffect(() => { void load() }, [load])
 
   async function saveInitial(snapshot: Snapshot) {
     setMessage('')
     try {
-      const response = await fetch('/api/private/editor', {
+      const response = await fetch(`/api/private/editor?space=${encodeURIComponent(space)}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ revision: 0, snapshot }),
       })
@@ -191,13 +199,13 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
 
   return (
     <>
-      {!splashDone && (
+      {showSplash && !splashDone && (
         <AtchoooSplash onDone={() => { setSplashDone(true) }} />
       )}
 
       {ready && splashDone && (
         <EditorProvider persistence="external" initialSnapshot={toEditorInitial(initial)}>
-          <PersistenceSync initial={initial} />
+          <PersistenceSync initial={initial} space={space} />
           {children}
         </EditorProvider>
       )}

@@ -285,7 +285,7 @@ export function InfiniteCanvas({
   return (
     <div
       ref={viewportRef}
-      className="relative h-[calc(100vh-4rem)] w-full cursor-grab overflow-hidden bg-[#F5F5F7] active:cursor-grabbing"
+      className="relative h-screen w-full cursor-grab overflow-hidden bg-[#F5F5F7] active:cursor-grabbing"
       style={{ touchAction: 'none' }}
       onPointerDown={onViewportPointerDown}
       onPointerMoveCapture={onViewportPointerMove}

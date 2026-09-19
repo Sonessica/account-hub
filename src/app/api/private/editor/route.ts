@@ -3,10 +3,18 @@ import { readEditor, saveEditor, type EditorSnapshot } from '@/lib/server/editor
 
 export const runtime = 'nodejs'
 const MAX_SNAPSHOT_BYTES = 20_000_000
+const SPACES = new Set(['home', 'notes', 'gallery', 'bookmarks'])
+
+function getSpace(request: Request) {
+  const space = new URL(request.url).searchParams.get('space') || 'home'
+  return SPACES.has(space) ? space : null
+}
 
 // Public personal hub: no password gate. Snapshot is the single shared page.
-export async function GET() {
-  return NextResponse.json({ snapshot: readEditor() }, { headers: { 'Cache-Control': 'no-store' } })
+export async function GET(request: Request) {
+  const space = getSpace(request)
+  if (!space) return NextResponse.json({ error: 'Invalid space' }, { status: 400 })
+  return NextResponse.json({ snapshot: readEditor(space) }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
 function validSnapshot(value: unknown): value is EditorSnapshot {
@@ -26,6 +34,8 @@ function validSnapshot(value: unknown): value is EditorSnapshot {
 }
 
 export async function PUT(request: Request) {
+  const space = getSpace(request)
+  if (!space) return NextResponse.json({ error: 'Invalid space' }, { status: 400 })
   const length = Number(request.headers.get('content-length') || 0)
   if (length > MAX_SNAPSHOT_BYTES) return NextResponse.json({ error: 'Snapshot too large' }, { status: 413 })
   const raw = await request.text()
@@ -34,7 +44,7 @@ export async function PUT(request: Request) {
   if (!Number.isSafeInteger(body?.revision) || body.revision < 0 || !validSnapshot(body?.snapshot)) {
     return NextResponse.json({ error: 'Invalid snapshot' }, { status: 400 })
   }
-  const saved = saveEditor(body.snapshot, body.revision)
-  if (saved === 'conflict') return NextResponse.json({ error: 'A newer version exists', snapshot: readEditor() }, { status: 409 })
+  const saved = saveEditor(body.snapshot, body.revision, space)
+  if (saved === 'conflict') return NextResponse.json({ error: 'A newer version exists', snapshot: readEditor(space) }, { status: 409 })
   return NextResponse.json({ snapshot: saved })
 }

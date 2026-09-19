@@ -1,5 +1,5 @@
-import { EmptyBentoCanvasPage } from '@/components/site/EmptyBentoCanvasPage'
+import { BentoEditorPage } from '@/app/bento/editor/page'
 
 export default function BookmarksPage() {
-  return <EmptyBentoCanvasPage />
+  return <BentoEditorPage space="bookmarks" showSplash={false} />
 }

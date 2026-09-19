@@ -43,27 +43,39 @@ function getDatabase() {
       updated_at TEXT NOT NULL
     )
   `)
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS editor_spaces (
+      space TEXT PRIMARY KEY,
+      revision INTEGER NOT NULL,
+      snapshot TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
   return database
 }
 
-export function readEditor(): StoredEditor | null {
-  const row = getDatabase().prepare('SELECT revision, snapshot, updated_at FROM editor_state WHERE id = 1')
-    .get() as { revision: number; snapshot: string; updated_at: string } | undefined
-  if (!row) return null
-  const parsed = JSON.parse(row.snapshot) as Partial<EditorSnapshot> & { desktopWidgets?: unknown[] }
+export function readEditor(space = 'home'): StoredEditor | null {
+  const row = space === 'home'
+    ? getDatabase().prepare('SELECT revision, snapshot, updated_at FROM editor_state WHERE id = 1').get()
+    : getDatabase().prepare('SELECT revision, snapshot, updated_at FROM editor_spaces WHERE space = ?').get(space)
+  const stored = row as { revision: number; snapshot: string; updated_at: string } | undefined
+  if (!stored) return null
+  const parsed = JSON.parse(stored.snapshot) as Partial<EditorSnapshot> & { desktopWidgets?: unknown[] }
   const snapshot: EditorSnapshot = {
     widgets: normalizeWidgets(Array.isArray(parsed.widgets) ? parsed.widgets : parsed.desktopWidgets),
     profile: parsed.profile || { name: 'ATCHOOO', description: '' },
     ...(parsed.siteSettings ? { siteSettings: parsed.siteSettings } : {}),
   }
-  return { ...snapshot, revision: row.revision, updatedAt: row.updated_at }
+  return { ...snapshot, revision: stored.revision, updatedAt: stored.updated_at }
 }
 
-export function saveEditor(snapshot: EditorSnapshot, expectedRevision: number): StoredEditor | 'conflict' {
+export function saveEditor(snapshot: EditorSnapshot, expectedRevision: number, space = 'home'): StoredEditor | 'conflict' {
   const db = getDatabase()
   db.exec('BEGIN IMMEDIATE')
   try {
-    const existing = db.prepare('SELECT revision FROM editor_state WHERE id = 1').get() as { revision: number } | undefined
+    const existing = (space === 'home'
+      ? db.prepare('SELECT revision FROM editor_state WHERE id = 1').get()
+      : db.prepare('SELECT revision FROM editor_spaces WHERE space = ?').get(space)) as { revision: number } | undefined
     if ((existing?.revision ?? 0) !== expectedRevision) {
       db.exec('ROLLBACK')
       return 'conflict'
@@ -71,11 +83,19 @@ export function saveEditor(snapshot: EditorSnapshot, expectedRevision: number): 
     const revision = expectedRevision + 1
     const updatedAt = new Date().toISOString()
     const normalized = { ...snapshot, widgets: normalizeWidgets(snapshot.widgets) }
-    db.prepare(`INSERT INTO editor_state (id, revision, snapshot, updated_at)
-      VALUES (1, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET revision = excluded.revision,
-      snapshot = excluded.snapshot, updated_at = excluded.updated_at`)
-      .run(revision, JSON.stringify(normalized), updatedAt)
+    if (space === 'home') {
+      db.prepare(`INSERT INTO editor_state (id, revision, snapshot, updated_at)
+        VALUES (1, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET revision = excluded.revision,
+        snapshot = excluded.snapshot, updated_at = excluded.updated_at`)
+        .run(revision, JSON.stringify(normalized), updatedAt)
+    } else {
+      db.prepare(`INSERT INTO editor_spaces (space, revision, snapshot, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(space) DO UPDATE SET revision = excluded.revision,
+        snapshot = excluded.snapshot, updated_at = excluded.updated_at`)
+        .run(space, revision, JSON.stringify(normalized), updatedAt)
+    }
     db.exec('COMMIT')
     return { ...normalized, revision, updatedAt }
   } catch (error) {

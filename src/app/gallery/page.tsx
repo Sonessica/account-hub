@@ -1,5 +1,5 @@
-import { EmptyBentoCanvasPage } from '@/components/site/EmptyBentoCanvasPage'
+import { BentoEditorPage } from '@/app/bento/editor/page'
 
 export default function GalleryPage() {
-  return <EmptyBentoCanvasPage />
+  return <BentoEditorPage space="gallery" showSplash={false} />
 }
