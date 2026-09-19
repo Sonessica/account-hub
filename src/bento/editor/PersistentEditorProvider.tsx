@@ -143,21 +143,12 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
   const [initial, setInitial] = useState<Stored | null>(null)
   const [draft, setDraft] = useState<Snapshot | null>(null)
   const [splashDone, setSplashDone] = useState(false)
-  const dataReady = useRef(false)
-  const [showEditor, setShowEditor] = useState(false)
-
-  const finishIfReady = useCallback(() => {
-    if (dataReady.current && splashDone) setShowEditor(true)
-  }, [splashDone])
-
-  useEffect(() => { finishIfReady() }, [finishIfReady])
 
   const load = useCallback(async () => {
     try {
       const response = await fetch('/api/private/editor', { cache: 'no-store' })
       if (!response.ok) throw new Error(`Load failed: ${response.status}`)
       const data = await response.json() as { snapshot: Stored | null }
-      dataReady.current = true
       if (data.snapshot) {
         setInitial(data.snapshot)
         setState('ready')
@@ -167,7 +158,6 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
         else { setInitial(null); setState('ready') }
       }
     } catch (error) {
-      dataReady.current = true
       setMessage(error instanceof Error ? error.message : '无法连接到 NAS 数据库')
       setState('error')
     }
@@ -205,14 +195,14 @@ export function PersistentEditorProvider({ children }: { children: React.ReactNo
         <AtchoooSplash onDone={() => { setSplashDone(true) }} />
       )}
 
-      {ready && showEditor && (
+      {ready && splashDone && (
         <EditorProvider persistence="external" initialSnapshot={toEditorInitial(initial)}>
           <PersistenceSync initial={initial} />
           {children}
         </EditorProvider>
       )}
 
-      {ready && !showEditor && (
+      {ready && !splashDone && (
         <div className="min-h-screen bg-[#1D4ED8]" aria-hidden="true" />
       )}
 
