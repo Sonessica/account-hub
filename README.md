@@ -284,4 +284,6 @@ npm run build
 
 ## License
 
-`package.json` 当前标注为 MIT，但仓库没有独立 `LICENSE` 文件。对外分发前应补充并核实上游与本项目的许可文本。
+本项目按 [MIT License](LICENSE) 发布。
+
+Account Hub 基于 [OpenBento](https://github.com/bravohenry/openbento) 修改。经核对，上游 `package.json` 将项目标注为 MIT，并将作者标注为 OpenBento Community，但上游当前没有独立的许可文件。本仓库已补齐完整 MIT 文本并保留上游归属说明；Uiverse 片段及其他第三方内容见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。第三方依赖仍分别适用其作者发布的许可条款。
