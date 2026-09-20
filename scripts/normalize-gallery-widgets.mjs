@@ -5,11 +5,11 @@
  * - coverEffect random
  * - reflow positions on a dense 1x1 grid
  *
- * Run inside account-hub image with data mounted at /app/data.
+ * Run inside the atchooo-space image with data mounted at /app/data.
  */
 import { DatabaseSync } from 'node:sqlite'
 
-const DB_PATH = process.env.DB_PATH || '/app/data/account-hub.sqlite'
+const DB_PATH = process.env.DB_PATH || '/app/data/atchooo-space.sqlite'
 const PER_ROW = 12
 const START_Y = 2
 

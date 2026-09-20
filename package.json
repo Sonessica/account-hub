@@ -1,7 +1,7 @@
 {
-  "name": "account-hub",
+  "name": "atchooo-space",
   "version": "0.7.0",
-  "description": "Self-hosted single-user Account Hub / Bento editor with NAS SQLite persistence, based on OpenBento.",
+  "description": "ATCHOOO is a self-hosted personal space and Bento canvas with NAS SQLite persistence, based on OpenBento.",
   "keywords": [
     "bento",
     "bento-me",
@@ -25,9 +25,9 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Sonessica/account-hub"
+    "url": "https://github.com/Sonessica/atchooo-space"
   },
-  "author": "Account Hub",
+  "author": "ATCHOOO",
   "license": "MIT",
   "engines": {
     "node": ">=22"

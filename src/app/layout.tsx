@@ -21,14 +21,14 @@ const manrope = Manrope({
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export const metadata: Metadata = {
-  title: "Account Hub",
-  description: "Self-hosted single-user Bento editor with NAS SQLite persistence.",
-  authors: [{ name: "Account Hub" }],
+  title: "ATCHOOO",
+  description: "A self-hosted personal space built on an adaptive Bento canvas.",
+  authors: [{ name: "ATCHOOO" }],
   openGraph: {
-    title: "Account Hub",
-    description: "Self-hosted single-user Bento editor with NAS SQLite persistence.",
+    title: "ATCHOOO",
+    description: "A self-hosted personal space built on an adaptive Bento canvas.",
     type: "website",
-    siteName: "Account Hub",
+    siteName: "ATCHOOO",
   },
   robots: {
     index: false,

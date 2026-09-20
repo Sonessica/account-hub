@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 const MAX_UPLOAD_BYTES = 20_000_000
 
 function mediaDirectory() {
-  return resolve(process.env.ACCOUNT_HUB_MEDIA_PATH || '/app/data/media')
+  return resolve(process.env.ATCHOOO_MEDIA_PATH || process.env.ACCOUNT_HUB_MEDIA_PATH || '/app/data/media')
 }
 
 // Public personal hub: image upload open like the rest of the editor APIs.

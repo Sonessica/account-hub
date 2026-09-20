@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Account Hub is based on and contains code adapted from third-party projects.
+ATCHOOO is based on and contains code adapted from third-party projects.
 Those portions remain subject to their respective copyright notices and
 license terms.
 
@@ -14,7 +14,7 @@ license terms.
 
 The upstream revision checked on 2026-09-19 does not contain a standalone
 `LICENSE`, `COPYING`, or `NOTICE` file. Its package metadata nevertheless
-declares `"license": "MIT"` and `"author": "OpenBento Community"`. Account Hub
+declares `"license": "MIT"` and `"author": "OpenBento Community"`. ATCHOOO
 therefore includes the complete MIT terms in the repository root and retains
 the upstream attribution in this notice.
 
@@ -30,6 +30,6 @@ permission and warranty text.
 
 ## Installed dependencies
 
-JavaScript packages installed through npm are not relicensed by Account Hub.
+JavaScript packages installed through npm are not relicensed by ATCHOOO.
 Each package is distributed under the terms published by its own authors. See
 `package-lock.json` for the resolved dependency inventory.

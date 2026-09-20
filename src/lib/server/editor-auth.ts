@@ -3,23 +3,23 @@ import 'server-only'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
 
-const COOKIE = 'account_hub_session'
+const COOKIE = 'atchooo_session'
 const MAX_AGE = 60 * 60 * 24 * 30
 
 function adminPassword() {
-  const value = process.env.ACCOUNT_HUB_ADMIN_PASSWORD
-  if (!value || value.length < 6) throw new Error('ACCOUNT_HUB_ADMIN_PASSWORD must have at least 6 characters')
+  const value = process.env.ATCHOOO_ADMIN_PASSWORD || process.env.ACCOUNT_HUB_ADMIN_PASSWORD
+  if (!value || value.length < 6) throw new Error('ATCHOOO_ADMIN_PASSWORD must have at least 6 characters')
   return value
 }
 
 function sessionSecret() {
-  const value = process.env.ACCOUNT_HUB_SESSION_SECRET
-  if (!value || value.length < 32) throw new Error('ACCOUNT_HUB_SESSION_SECRET must have at least 32 characters')
+  const value = process.env.ATCHOOO_SESSION_SECRET || process.env.ACCOUNT_HUB_SESSION_SECRET
+  if (!value || value.length < 32) throw new Error('ATCHOOO_SESSION_SECRET must have at least 32 characters')
   return value
 }
 
 function signature(expires: number) {
-  return createHmac('sha256', sessionSecret()).update(`account-hub:${expires}`).digest('hex')
+  return createHmac('sha256', sessionSecret()).update(`atchooo-space:${expires}`).digest('hex')
 }
 
 export function checkPassword(candidate: string) {

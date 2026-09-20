@@ -62,7 +62,9 @@ export function RadialNavigation({ hidden = false, compact = false }: { hidden?:
   const [displayIndex, setDisplayIndex] = useState(activeIndex)
   const displayIndexRef = useRef(activeIndex)
   const [hasLearned, setHasLearned] = useState(() =>
-    typeof window === 'undefined' || localStorage.getItem('account-hub-radial-learned') === '1'
+    typeof window === 'undefined' ||
+      localStorage.getItem('atchooo-space-radial-learned') === '1' ||
+      localStorage.getItem('account-hub-radial-learned') === '1'
   )
 
   useEffect(() => {
@@ -132,7 +134,7 @@ export function RadialNavigation({ hidden = false, compact = false }: { hidden?:
     displayIndexRef.current = targetIndex
     previewDirection.current = circularOffset(targetIndex, activeIndex, items.length) >= 0 ? 'forward' : 'backward'
     setDisplayIndex(targetIndex)
-    localStorage.setItem('account-hub-radial-learned', '1')
+    localStorage.setItem('atchooo-space-radial-learned', '1')
     setHasLearned(true)
     window.setTimeout(() => navigateTo(targetIndex), 110)
   }

@@ -1,16 +1,19 @@
+name: atchooo-space
+
 services:
-  openbento-review:
+  atchooo-space:
     build: .
-    container_name: account-hub
+    image: atchooo-space:latest
+    container_name: atchooo-space
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: review-placeholder
-      NEXT_PUBLIC_APP_URL: https://account.atchooo.com:2096
-      ACCOUNT_HUB_DB_PATH: /app/data/account-hub.sqlite
-      ACCOUNT_HUB_MEDIA_PATH: /app/data/media
-      ACCOUNT_HUB_ADMIN_PASSWORD: ${ACCOUNT_HUB_ADMIN_PASSWORD:?Set ACCOUNT_HUB_ADMIN_PASSWORD in .env}
-      ACCOUNT_HUB_SESSION_SECRET: ${ACCOUNT_HUB_SESSION_SECRET:?Set ACCOUNT_HUB_SESSION_SECRET in .env}
+      NEXT_PUBLIC_APP_URL: https://space.atchooo.com:2096
+      ATCHOOO_DB_PATH: /app/data/atchooo-space.sqlite
+      ATCHOOO_MEDIA_PATH: /app/data/media
+      ATCHOOO_ADMIN_PASSWORD: ${ATCHOOO_ADMIN_PASSWORD:?Set ATCHOOO_ADMIN_PASSWORD in .env}
+      ATCHOOO_SESSION_SECRET: ${ATCHOOO_SESSION_SECRET:?Set ATCHOOO_SESSION_SECRET in .env}
     volumes:
       - ./data:/app/data
     networks:

@@ -1,11 +1,11 @@
 /**
  * Import gallery image widgets from NAS movie downloads.
- * Run inside the account-hub image with host paths mounted.
+ * Run inside the atchooo-space image with host paths mounted.
  *
  * Expected env/args:
  *   MOVIE_DIR  e.g. /movie/罗怡恬er/downloads
  *   MEDIA_DIR  e.g. /app/data/media
- *   DB_PATH    e.g. /app/data/account-hub.sqlite
+ *   DB_PATH    e.g. /app/data/atchooo-space.sqlite
  */
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, readdir } from 'node:fs/promises'
@@ -15,7 +15,7 @@ import sharp from 'sharp'
 
 const MOVIE_DIR = process.env.MOVIE_DIR || '/movie/罗怡恬er/downloads'
 const MEDIA_DIR = process.env.MEDIA_DIR || '/app/data/media'
-const DB_PATH = process.env.DB_PATH || '/app/data/account-hub.sqlite'
+const DB_PATH = process.env.DB_PATH || '/app/data/atchooo-space.sqlite'
 const GROUP = 9
 const MAX_UPLOAD_BYTES = 20_000_000
 

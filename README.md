@@ -1,6 +1,6 @@
-# Account Hub
+# ATCHOOO
 
-Account Hub `0.7.0` 是一个基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的、自托管的个人数字主页。它以 Bento 无限画布为核心，通过 HOME、NOTES、GALLERY、BOOKMARKS 四个独立 Space 管理和展示链接、图片、文字与位置等内容。
+ATCHOOO `0.7.0` 是一个基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的、自托管个人空间。它以 Bento 无限画布为核心，通过 HOME、NOTES、GALLERY、BOOKMARKS 四个独立 Space 管理和展示链接、图片、文字与位置等内容。
 
 当前版本面向桌面浏览器和个人使用场景。访客模式与编辑模式使用同一份 NAS SQLite 数据，修改会自动保存。
 
@@ -212,12 +212,12 @@ Undo/Redo 使用统一快照历史，覆盖创建、删除、复制、内容更�
 
 | 内容 | 默认位置 |
 | --- | --- |
-| Space 快照、revision、版本历史 | `./data/account-hub.sqlite` |
+| Space 快照、revision、版本历史 | `./data/atchooo-space.sqlite` |
 | 上传并压缩后的 WebP 图片 | `./data/media/` |
 | 每个 Space 的 Pan / Zoom | 浏览器 localStorage |
 | 首次迁移使用的旧卡片 | 浏览器 localStorage |
 
-页面快照请求上限为 20 MB，单张原始上传图片上限为 20 MB。SQLite 使用 WAL 模式，运行时可能出现 `account-hub.sqlite-wal` 和 `account-hub.sqlite-shm`。备份、恢复与一致性要求见 [NAS 数据说明](docs/NAS_SQLITE_PERSISTENCE.md)。
+页面快照请求上限为 20 MB，单张原始上传图片上限为 20 MB。SQLite 使用 WAL 模式，运行时可能出现 `atchooo-space.sqlite-wal` 和 `atchooo-space.sqlite-shm`。备份、恢复与一致性要求见 [NAS 数据说明](docs/NAS_SQLITE_PERSISTENCE.md)。
 
 ## NAS / Docker 部署
 
@@ -225,13 +225,13 @@ Undo/Redo 使用统一快照历史，覆盖创建、删除、复制、内容更�
 
 ```bash
 cp .env.example .env
-# 设置至少 6 字符的 ACCOUNT_HUB_ADMIN_PASSWORD
-# 以及至少 32 字符的 ACCOUNT_HUB_SESSION_SECRET
+# 设置至少 6 字符的 ATCHOOO_ADMIN_PASSWORD
+# 以及至少 32 字符的 ATCHOOO_SESSION_SECRET
 docker compose up -d --build
-docker compose logs --tail=50 openbento-review
+docker compose logs --tail=50 atchooo-space
 ```
 
-当前 `docker-compose.yml` 的公开地址为 `https://account.atchooo.com:2096`。更换域名时需要同步检查 Compose、Dockerfile 中的 `NEXT_PUBLIC_APP_URL` 以及反向代理。
+当前 `docker-compose.yml` 的公开地址为 `https://space.atchooo.com:2096`。更换域名时需要同步检查 Compose、Dockerfile 中的 `NEXT_PUBLIC_APP_URL` 以及反向代理。
 
 部署更新前应先备份 SQLite 和 `data/media`。不要使用 `docker compose down -v` 删除数据卷，也不要提交 `.env`、`data/` 或部署备份。
 
@@ -241,8 +241,8 @@ docker compose logs --tail=50 openbento-review
 
 ```powershell
 npm ci
-$env:ACCOUNT_HUB_DB_PATH = (Join-Path (Get-Location) 'data/account-hub.sqlite')
-$env:ACCOUNT_HUB_MEDIA_PATH = (Join-Path (Get-Location) 'data/media')
+$env:ATCHOOO_DB_PATH = (Join-Path (Get-Location) 'data/atchooo-space.sqlite')
+$env:ATCHOOO_MEDIA_PATH = (Join-Path (Get-Location) 'data/media')
 $env:NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
 npm run dev
 ```
@@ -304,4 +304,4 @@ npm run build
 
 本项目按 [MIT License](LICENSE) 发布。
 
-Account Hub 基于 [OpenBento](https://github.com/bravohenry/openbento) 修改。经核对，上游 `package.json` 将项目标注为 MIT，并将作者标注为 OpenBento Community，但上游当前没有独立的许可文件。本仓库已补齐完整 MIT 文本并保留上游归属说明；Uiverse 片段及其他第三方内容见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。第三方依赖仍分别适用其作者发布的许可条款。
+ATCHOOO 基于 [OpenBento](https://github.com/bravohenry/openbento) 修改。经核对，上游 `package.json` 将项目标注为 MIT，并将作者标注为 OpenBento Community，但上游当前没有独立的许可文件。本仓库已补齐完整 MIT 文本并保留上游归属说明；Uiverse 片段及其他第三方内容见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。第三方依赖仍分别适用其作者发布的许可条款。

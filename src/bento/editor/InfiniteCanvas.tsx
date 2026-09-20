@@ -85,7 +85,13 @@ export function InfiniteCanvas({
   const viewportRef = useRef<HTMLDivElement>(null)
   const initialView = useRef<{ pan: { x: number; y: number }; zoom: number } | null>(null)
   if (initialView.current === null && typeof window !== 'undefined') {
-    try { initialView.current = JSON.parse(localStorage.getItem(`account-hub-view-${space}`) || 'null') } catch { initialView.current = null }
+    try {
+      initialView.current = JSON.parse(
+        localStorage.getItem(`atchooo-space-view-${space}`) ||
+        localStorage.getItem(`account-hub-view-${space}`) ||
+        'null',
+      )
+    } catch { initialView.current = null }
   }
   const [pan, setPan] = useState(() => initialView.current?.pan || { x: 0, y: 0 })
   const [zoom, setZoom] = useState(() => initialView.current?.zoom || 1)
@@ -126,7 +132,7 @@ export function InfiniteCanvas({
   }, [centerVersion, showSearch])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => localStorage.setItem(`account-hub-view-${space}`, JSON.stringify({ pan, zoom })), 180)
+    const timer = window.setTimeout(() => localStorage.setItem(`atchooo-space-view-${space}`, JSON.stringify({ pan, zoom })), 180)
     return () => window.clearTimeout(timer)
   }, [pan, space, zoom])
 

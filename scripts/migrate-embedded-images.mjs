@@ -4,8 +4,8 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import sharp from 'sharp'
 
-const databasePath = resolve(process.env.ACCOUNT_HUB_DB_PATH || '/app/data/account-hub.sqlite')
-const mediaPath = resolve(process.env.ACCOUNT_HUB_MEDIA_PATH || '/app/data/media')
+const databasePath = resolve(process.env.ATCHOOO_DB_PATH || process.env.ACCOUNT_HUB_DB_PATH || '/app/data/atchooo-space.sqlite')
+const mediaPath = resolve(process.env.ATCHOOO_MEDIA_PATH || process.env.ACCOUNT_HUB_MEDIA_PATH || '/app/data/media')
 const database = new DatabaseSync(databasePath)
 const row = database.prepare('SELECT revision, snapshot FROM editor_state WHERE id = 1').get()
 

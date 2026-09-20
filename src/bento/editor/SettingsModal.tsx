@@ -157,7 +157,7 @@ export function SettingsModal({
 
             {tab === 'about' && (
               <div className="grid gap-2 text-sm text-black/70">
-                <p className="text-lg font-semibold text-black">ATCHOOO Account Hub</p>
+                <p className="text-lg font-semibold text-black">ATCHOOO</p>
                 <p>版本 {APP_VERSION}</p>
                 <p>个人名片站 · 数据存于 NAS SQLite</p>
                 <p className="text-black/45">公开可访问；编辑与设置在本机自动保存。</p>

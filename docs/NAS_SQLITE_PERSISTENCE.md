@@ -4,7 +4,7 @@
 
 ## 存储位置
 
-Compose 将宿主机 `./data` 挂载到容器 `/app/data`。默认数据库为 `./data/account-hub.sqlite`，上传媒体在 `./data/media/`；可分别通过 `ACCOUNT_HUB_DB_PATH`、`ACCOUNT_HUB_MEDIA_PATH` 调整容器内路径。数据库采用 WAL 模式，运行中可能同时存在 `account-hub.sqlite-wal` 和 `account-hub.sqlite-shm`。不要将 `data/` 纳入 Git 或 Docker 构建上下文。
+Compose 将宿主机 `./data` 挂载到容器 `/app/data`。默认数据库为 `./data/atchooo-space.sqlite`，上传媒体在 `./data/media/`；可分别通过 `ATCHOOO_DB_PATH`、`ATCHOOO_MEDIA_PATH` 调整容器内路径。数据库采用 WAL 模式，运行中可能同时出现 `atchooo-space.sqlite-wal` 和 `atchooo-space.sqlite-shm`。不要将 `data/` 纳入 Git 或 Docker 构建上下文。升级自旧版 Account Hub 时，运行时仍兼容原 `ACCOUNT_HUB_*` 环境变量，但建议迁移到新变量名。
 
 ## 保存与首次导入
 

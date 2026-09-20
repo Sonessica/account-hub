@@ -32,7 +32,7 @@ export interface EditorVersion { id: number; space: string; revision: number; ac
 
 function getDatabase() {
   if (database) return database
-  const file = resolve(process.env.ACCOUNT_HUB_DB_PATH || '/app/data/account-hub.sqlite')
+  const file = resolve(process.env.ATCHOOO_DB_PATH || process.env.ACCOUNT_HUB_DB_PATH || '/app/data/atchooo-space.sqlite')
   mkdirSync(dirname(file), { recursive: true })
   database = new DatabaseSync(file)
   database.exec('PRAGMA journal_mode = WAL')

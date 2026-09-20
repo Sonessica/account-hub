@@ -13,7 +13,7 @@ export async function GET(_request: Request, context: { params: Promise<{ filena
     return new NextResponse('Not found', { status: 404 })
   }
   try {
-    const file = await readFile(resolve(process.env.ACCOUNT_HUB_MEDIA_PATH || '/app/data/media', filename))
+    const file = await readFile(resolve(process.env.ATCHOOO_MEDIA_PATH || process.env.ACCOUNT_HUB_MEDIA_PATH || '/app/data/media', filename))
     return new NextResponse(file, {
       headers: {
         'Content-Type': 'image/webp',
