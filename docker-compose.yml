@@ -10,6 +10,7 @@ services:
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: review-placeholder
       NEXT_PUBLIC_APP_URL: https://space.atchooo.com:2096
+      HOSTNAME: 0.0.0.0
       ATCHOOO_DB_PATH: /app/data/atchooo-space.sqlite
       ATCHOOO_MEDIA_PATH: /app/data/media
       ATCHOOO_ADMIN_PASSWORD: ${ATCHOOO_ADMIN_PASSWORD:?Set ATCHOOO_ADMIN_PASSWORD in .env}
