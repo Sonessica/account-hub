@@ -1,13 +1,9 @@
 'use client'
 
 /**
- * [INPUT]: (widget: WidgetConfig, onDelete, onSizeChange, onUpdate) - Widget configuration and edit callbacks
- * [OUTPUT]: React component - Edit overlay with delete button, size picker, and location search button (map widget only), rendered via Portal
- * [POS]: Located at /bento/editor, provides floating edit controls for selected widgets, tracks widget position using getBoundingClientRect and RAF. For map widgets, includes location search functionality via Google Maps Places API.
- * 
- * [PROTOCOL]:
- * 1. Once this file's logic changes, this Header must be synchronized immediately.
- * 2. After update, must check upward whether the parent folder's .folder.md description is still accurate.
+ * [INPUT]: widget + edit callbacks
+ * [OUTPUT]: single floating control menu (actions + size + map search)
+ * [POS]: /bento/editor — portal overlay for the selected card
  */
 
 import React from 'react'
@@ -17,8 +13,6 @@ import type { WidgetConfig, WidgetSize, MapWidgetConfig } from '../widgets/types
 import { SIZE_VARIANTS } from '../widgets/types'
 import { cn } from '@/design-system/utils/cn'
 import { LocationSearch } from './LocationSearch'
-
-// ============ Props ============
 
 interface WidgetEditOverlayProps {
     widget: WidgetConfig
@@ -30,88 +24,29 @@ interface WidgetEditOverlayProps {
     onDuplicate?: () => void
 }
 
-// ============ Delete Icon ============
-
 const DeleteIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={className}
-    >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
     </svg>
 )
 
-// ============ Size Icon (Visual representation) ============
-
-interface SizeIconProps {
-    size: WidgetSize
-    isActive: boolean
-}
-
-const SizeIcon: React.FC<SizeIconProps> = ({ size, isActive }) => {
-    // Inactive: White (faded), Active: Black (sharp against white bg)
+const SizeIcon: React.FC<{ size: WidgetSize; isActive: boolean }> = ({ size, isActive }) => {
     const stroke = isActive ? 'black' : 'rgba(255,255,255,0.6)'
     const strokeWidth = 1.5
-
-    // SVG viewBox is 24x24, shapes are positioned within
     const renderShape = () => {
         switch (size) {
             case '1x1':
-                // Small square
-                return (
-                    <rect
-                        x="7" y="7"
-                        width="10" height="10"
-                        rx="2.5"
-                        stroke={stroke}
-                        strokeWidth={strokeWidth}
-                    />
-                )
+                return <rect x="7" y="7" width="10" height="10" rx="2.5" stroke={stroke} strokeWidth={strokeWidth} />
             case '2x1':
-                // Horizontal rectangle (wide)
-                return (
-                    <rect
-                        x="4" y="8"
-                        width="16" height="8"
-                        rx="2.5"
-                        stroke={stroke}
-                        strokeWidth={strokeWidth}
-                    />
-                )
+                return <rect x="4" y="8" width="16" height="8" rx="2.5" stroke={stroke} strokeWidth={strokeWidth} />
             case '1x2':
-                // Vertical rectangle (tall)
-                return (
-                    <rect
-                        x="8" y="4"
-                        width="8" height="16"
-                        rx="2.5"
-                        stroke={stroke}
-                        strokeWidth={strokeWidth}
-                    />
-                )
+                return <rect x="8" y="4" width="8" height="16" rx="2.5" stroke={stroke} strokeWidth={strokeWidth} />
             case '2x2':
-                // Large square
-                return (
-                    <rect
-                        x="4" y="4"
-                        width="16" height="16"
-                        rx="2.5"
-                        stroke={stroke}
-                        strokeWidth={strokeWidth}
-                    />
-                )
+                return <rect x="4" y="4" width="16" height="16" rx="2.5" stroke={stroke} strokeWidth={strokeWidth} />
             default:
                 return null
         }
     }
-
     return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             {renderShape()}
@@ -119,7 +54,8 @@ const SizeIcon: React.FC<SizeIconProps> = ({ size, isActive }) => {
     )
 }
 
-// ============ Component ============
+const actionBtnClass = 'rounded-lg px-2.5 py-1.5 whitespace-nowrap hover:bg-white/15 transition-colors'
+const actionBtnActiveClass = 'rounded-lg px-2.5 py-1.5 whitespace-nowrap bg-white text-black hover:bg-white/90 transition-colors'
 
 export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
     widget,
@@ -134,7 +70,6 @@ export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
     const [isVisible, setIsVisible] = React.useState(false)
     const [showLocationSearch, setShowLocationSearch] = React.useState(false)
 
-    // Update position loop and close on scroll
     React.useEffect(() => {
         let lastRect: DOMRect | null = null
 
@@ -142,7 +77,6 @@ export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
             const element = document.getElementById(`widget-${widget.id}`)
             if (element) {
                 const newRect = element.getBoundingClientRect()
-                // Only update if changes are significant to avoid thrashing
                 setRect((prev) => {
                     if (!prev) {
                         lastRect = newRect
@@ -164,39 +98,29 @@ export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
             }
         }
 
-        // Close overlay on any scroll/touch interaction (same as avatar overlay)
         const handleClose = () => {
-            if (onClose) {
-                onClose()
-            }
+            if (onClose) onClose()
         }
 
         updatePosition()
 
-        // Use ResizeObserver for the target element
         const element = document.getElementById(`widget-${widget.id}`)
         let resizeObserver: ResizeObserver | null = null
-
         if (element) {
             resizeObserver = new ResizeObserver(updatePosition)
             resizeObserver.observe(element)
         }
 
-        // Listen to all possible scroll-related events to close overlay
         window.addEventListener('scroll', handleClose, { passive: true, capture: true })
         window.addEventListener('wheel', handleClose, { passive: true, capture: true })
         window.addEventListener('touchmove', handleClose, { passive: true, capture: true })
         window.addEventListener('resize', updatePosition, { passive: true })
-
-        // Also listen on document for global scroll detection
         document.addEventListener('scroll', handleClose, { passive: true, capture: true })
         document.addEventListener('wheel', handleClose, { passive: true, capture: true })
         document.addEventListener('touchmove', handleClose, { passive: true, capture: true })
 
-        // Also listen to scroll events on all scrollable parent containers
         let currentElement: HTMLElement | null = element?.parentElement || null
         const scrollableParents: HTMLElement[] = []
-        
         while (currentElement && currentElement !== document.body) {
             const overflow = window.getComputedStyle(currentElement).overflow
             const overflowY = window.getComputedStyle(currentElement).overflowY
@@ -210,19 +134,15 @@ export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
             currentElement = currentElement.parentElement
         }
 
-        // Use requestAnimationFrame to detect position changes (catches all scroll types)
         let animationFrameId: number
         const checkPosition = () => {
             if (element && lastRect) {
                 const currentRect = element.getBoundingClientRect()
-                // If position changed significantly (more than 1px), close overlay
                 if (
                     Math.abs(currentRect.top - lastRect.top) > 1 ||
                     Math.abs(currentRect.left - lastRect.left) > 1
                 ) {
-                    if (onClose) {
-                        onClose()
-                    }
+                    if (onClose) onClose()
                     return
                 }
                 lastRect = currentRect
@@ -249,197 +169,138 @@ export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
         }
     }, [widget.id, onClose])
 
-    // Wait for rect to be available
     if (!rect || !isVisible) return null
+    if (typeof document === 'undefined') return null
 
-    // Map widget check
     const isMapWidget = widget.category === 'map'
-    // Section title widget - no size picker needed (fixed size)
     const isSectionWidget = widget.category === 'section'
+    const isHidden = !!widget.hidden
+    const isLocked = !!widget.locked
 
-    // Render via Portal
     const overlayContent = (
-        <div 
-            data-widget-overlay 
-            onPointerDown={(e) => e.stopPropagation()} 
+        <div
+            data-widget-overlay
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
         >
+            {/* Unified control menu above the card */}
             <motion.div
-                className="fixed z-[9999] flex items-center gap-1 rounded-xl border border-white/10 bg-black/90 p-1.5 text-xs text-white shadow-xl backdrop-blur-xl"
-                style={{ left: rect.left + rect.width / 2, top: rect.top - 48, transform: 'translateX(-50%)' }}
-                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-            >
-                <button className="rounded-lg px-3 py-1.5 hover:bg-white/15" onClick={onEdit}>编辑</button>
-                <button className="rounded-lg px-3 py-1.5 hover:bg-white/15" onClick={onDuplicate}>复制</button>
-                <button className="rounded-lg px-3 py-1.5 hover:bg-white/15" onClick={() => onUpdate?.({ locked: !widget.locked })}>{widget.locked ? '解锁' : '锁定'}</button>
-                <button className="rounded-lg px-3 py-1.5 hover:bg-white/15" onClick={() => onUpdate?.({ hidden: true })}>隐藏</button>
-            </motion.div>
-            {/* Delete Button - Top Left relative to widget */}
-            <motion.button
-                onClick={(e) => {
-                    e.stopPropagation()
-                    e.preventDefault()
-                    onDelete()
-                }}
-                onPointerDown={(e) => {
-                    e.stopPropagation()
-                }}
-                className={cn(
-                    'fixed rounded-full shadow-lg',
-                    'size-[34px] flex items-center justify-center',
-                    'z-[9999]'
-                )}
-                style={{
-                    left: rect.left - 12,
-                    top: rect.top - 12,
-                    backgroundColor: 'white',
-                    cursor: 'pointer',
-                }}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{
-                    type: 'spring',
-                    stiffness: 500,
-                    damping: 30,
-                }}
-            >
-                <DeleteIcon className="text-black" />
-            </motion.button>
-
-            {/* Size Picker - Bottom Center relative to widget (hidden for section widgets) */}
-            {!isSectionWidget && (
-            <motion.div
-                className={cn(
-                    'fixed backdrop-blur-xl bg-black/90 rounded-[12px]',
-                    'shadow-[0px_4px_16px_rgba(0,0,0,0.25)]',
-                    'border border-white/5',
-                    'px-1.5 py-1.5',
-                    'flex items-center gap-1.5',
-                    'z-[9999]'
-                )}
+                className="fixed z-[9999] min-w-[220px] overflow-hidden rounded-2xl border border-white/10 bg-black/90 text-xs text-white shadow-xl backdrop-blur-xl"
                 style={{
                     left: rect.left + rect.width / 2,
-                    top: rect.bottom - 20,
-                    cursor: 'default',
+                    top: rect.top - 10,
+                    transform: 'translate(-50%, -100%)',
                 }}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                initial={{ opacity: 0, y: -4, x: '-50%' }}
-                animate={{ opacity: 1, y: 0, x: '-50%' }}
-                exit={{ opacity: 0, y: -4, x: '-50%' }}
-                transition={{
-                    type: 'spring',
-                    stiffness: 500,
-                    damping: 30,
-                }}
+                initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 28 }}
             >
-                {/* Size Icons Row */}
-                <div className="flex items-center gap-0.5">
-                    {SIZE_VARIANTS.map((size) => {
-                        const isActive = widget.size === size
-
-                        return (
-                            <motion.button
-                                key={size}
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    e.preventDefault()
-                                    onSizeChange(size)
-                                }}
-                                onPointerDown={(e) => {
-                                    e.stopPropagation()
-                                }}
-                                className={cn(
-                                    'rounded-[8px] flex items-center justify-center',
-                                    'size-[28px]',
-                                    isActive
-                                        ? 'bg-white shadow-sm'
-                                        : 'bg-transparent text-white/60'
-                                )}
-                                title={size}
-                                whileHover={{
-                                    backgroundColor: isActive ? undefined : 'rgba(255, 255, 255, 0.1)',
-                                }}
-                                whileTap={{ scale: 0.95 }}
-                                transition={{
-                                    type: 'tween',
-                                    duration: 0.15,
-                                    ease: [0.32, 0.72, 0, 1],
-                                }}
-                            >
-                                <SizeIcon size={size} isActive={isActive} />
-                            </motion.button>
-                        )
-                    })}
+                {/* Actions row */}
+                <div className="flex items-center gap-0.5 p-1.5">
+                    <button type="button" className={actionBtnClass} onClick={onEdit}>编辑</button>
+                    <button type="button" className={actionBtnClass} onClick={onDuplicate}>复制</button>
+                    <button
+                        type="button"
+                        className={isLocked ? actionBtnActiveClass : actionBtnClass}
+                        onClick={() => onUpdate?.({ locked: !isLocked })}
+                    >
+                        {isLocked ? '解锁' : '锁定'}
+                    </button>
+                    <button
+                        type="button"
+                        className={isHidden ? actionBtnActiveClass : actionBtnClass}
+                        onClick={() => onUpdate?.({ hidden: !isHidden })}
+                    >
+                        {isHidden ? '显示' : '隐藏'}
+                    </button>
+                    <div className="mx-0.5 h-4 w-px shrink-0 bg-white/15" />
+                    <button
+                        type="button"
+                        className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-white/90 hover:bg-white/15 hover:text-white"
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            e.preventDefault()
+                            onDelete()
+                        }}
+                    >
+                        <DeleteIcon />
+                        删除
+                    </button>
                 </div>
 
-                {/* Location Search Button - Only for Map Widget, on the right */}
-                {isMapWidget && (
-                    <>
-                        <div className="w-[1px] h-4 bg-white/10" />
-                        <motion.button
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                e.preventDefault()
-                                setShowLocationSearch(!showLocationSearch)
-                            }}
-                            onPointerDown={(e) => {
-                                e.stopPropagation()
-                            }}
-                            className={cn(
-                                'rounded-[8px] flex items-center justify-center',
-                                'size-[28px]',
-                                showLocationSearch
-                                    ? 'bg-white shadow-sm'
-                                    : 'bg-transparent text-white/60 hover:bg-white/10'
-                            )}
-                            title="Search Location"
-                            whileHover={{
-                                backgroundColor: showLocationSearch ? undefined : 'rgba(255, 255, 255, 0.1)',
-                            }}
-                            whileTap={{ scale: 0.95 }}
-                            transition={{
-                                type: 'tween',
-                                duration: 0.15,
-                                ease: [0.32, 0.72, 0, 1],
-                            }}
-                        >
-                            <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            >
-                                <circle cx="11" cy="11" r="8" />
-                                <path d="m21 21-4.35-4.35" />
-                            </svg>
-                        </motion.button>
-                    </>
+                {/* Size + map tools row */}
+                {!isSectionWidget && (
+                    <div className="flex items-center gap-1 border-t border-white/10 p-1.5">
+                        <span className="pl-1 pr-0.5 text-[10px] uppercase tracking-wide text-white/40">尺寸</span>
+                        {SIZE_VARIANTS.map((size) => {
+                            const isActive = widget.size === size
+                            return (
+                                <motion.button
+                                    key={size}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        e.preventDefault()
+                                        onSizeChange(size)
+                                    }}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    className={cn(
+                                        'rounded-lg flex items-center justify-center size-[28px]',
+                                        isActive ? 'bg-white shadow-sm' : 'bg-transparent text-white/60 hover:bg-white/10'
+                                    )}
+                                    title={size}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    <SizeIcon size={size} isActive={isActive} />
+                                </motion.button>
+                            )
+                        })}
+
+                        {isMapWidget && (
+                            <>
+                                <div className="ml-0.5 h-4 w-px bg-white/10" />
+                                <button
+                                    type="button"
+                                    className={cn(
+                                        'rounded-lg flex items-center justify-center size-[28px]',
+                                        showLocationSearch ? 'bg-white text-black shadow-sm' : 'text-white/60 hover:bg-white/10'
+                                    )}
+                                    title="搜索位置"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        e.preventDefault()
+                                        setShowLocationSearch(!showLocationSearch)
+                                    }}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <circle cx="11" cy="11" r="8" />
+                                        <path d="m21 21-4.35-4.35" />
+                                    </svg>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {isHidden && (
+                    <div className="border-t border-white/10 px-3 py-1.5 text-[10px] text-amber-200/90">
+                        当前卡片已隐藏，查看模式不显示；点「显示」可恢复
+                    </div>
                 )}
             </motion.div>
-            )}
 
-            {/* Location Search Dropdown */}
             {isMapWidget && showLocationSearch && onUpdate && (
                 <LocationSearch
                     rect={rect}
                     onSelect={(location) => {
                         const mapConfig = widget as MapWidgetConfig
-                        // When searching, set a reasonable default zoom (13-15 for specific locations)
-                        // If user already has a zoom level, keep it; otherwise use 13
                         const newZoom = mapConfig.zoom ?? 13
                         onUpdate({
                             location,
                             zoom: newZoom,
-                            // Update title to match location label for synchronization
                             title: location.label,
                         } as Partial<MapWidgetConfig>)
                         setShowLocationSearch(false)
@@ -450,9 +311,6 @@ export const WidgetEditOverlay: React.FC<WidgetEditOverlayProps> = ({
         </div>
     )
 
-    // Using a portal to document.body ensures it's unrelated to widget styling/clipping
-    // Check if document exists (SSR)
-    if (typeof document === 'undefined') return null
     return ReactDOM.createPortal(overlayContent, document.body)
 }
 

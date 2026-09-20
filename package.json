@@ -1,6 +1,6 @@
 {
   "name": "atchooo-space",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "ATCHOOO is a self-hosted personal space and Bento canvas with NAS SQLite persistence, based on OpenBento.",
   "keywords": [
     "bento",

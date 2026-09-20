@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Infinite bento canvas centered on a 1x4 search pill.
- * Pan freely; full-footprint placement handles swaps and multi-card pushes.
+ * Infinite bento canvas. Home anchors on a 1x4 search pill; other spaces anchor on origin (0,0).
+ * Every space mount / menu switch recenters that anchor to the viewport middle.
  */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -83,18 +83,19 @@ export function InfiniteCanvas({
   onExternalDrop,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
-  const initialView = useRef<{ pan: { x: number; y: number }; zoom: number } | null>(null)
-  if (initialView.current === null && typeof window !== 'undefined') {
+  const savedView = useRef<{ zoom: number } | null>(null)
+  if (savedView.current === null && typeof window !== 'undefined') {
     try {
-      initialView.current = JSON.parse(
+      const raw =
         localStorage.getItem(`atchooo-space-view-${space}`) ||
         localStorage.getItem(`account-hub-view-${space}`) ||
-        'null',
-      )
-    } catch { initialView.current = null }
+        'null'
+      const parsed = JSON.parse(raw) as { zoom?: number } | null
+      savedView.current = { zoom: typeof parsed?.zoom === 'number' ? parsed.zoom : 1 }
+    } catch { savedView.current = { zoom: 1 } }
   }
-  const [pan, setPan] = useState(() => initialView.current?.pan || { x: 0, y: 0 })
-  const [zoom, setZoom] = useState(() => initialView.current?.zoom || 1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(() => savedView.current?.zoom || 1)
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
   const [query, setQuery] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -118,18 +119,29 @@ export function InfiniteCanvas({
   const smoothX = useSpring(dragX, { stiffness: 420, damping: 38, mass: 0.55 })
   const smoothY = useSpring(dragY, { stiffness: 420, damping: 38, mass: 0.55 })
 
-  useEffect(() => {
+  /** Anchor (search pill on home, or origin 1x1 cell elsewhere) to viewport center */
+  const recenterView = React.useCallback(() => {
     const el = viewportRef.current
-    if (!el || centeredVersion.current === centerVersion || (initialView.current && centerVersion === 0)) return
+    if (!el) return
     const rect = el.getBoundingClientRect()
-    const searchW = showSearch ? SEARCH_COLS * BENTO_UNIT + (SEARCH_COLS - 1) * BENTO_GAP : BENTO_UNIT
-    const searchH = BENTO_UNIT
+    if (!rect.width || !rect.height) return
+    const anchorW = showSearch
+      ? SEARCH_COLS * BENTO_UNIT + (SEARCH_COLS - 1) * BENTO_GAP
+      : BENTO_UNIT
+    const anchorH = BENTO_UNIT
     setPan({
-      x: rect.width / 2 - searchW / 2,
-      y: rect.height / 2 - searchH / 2,
+      x: rect.width / 2 - anchorW / 2,
+      y: rect.height / 2 - anchorH / 2,
     })
+  }, [showSearch])
+
+  // Always re-anchor on mount / space switch / search visibility / manual centerVersion
+  useEffect(() => {
+    recenterView()
     centeredVersion.current = centerVersion
-  }, [centerVersion, showSearch])
+    const timer = window.setTimeout(recenterView, 80)
+    return () => window.clearTimeout(timer)
+  }, [recenterView, centerVersion, space, showSearch])
 
   useEffect(() => {
     const timer = window.setTimeout(() => localStorage.setItem(`atchooo-space-view-${space}`, JSON.stringify({ pan, zoom })), 180)
@@ -139,12 +151,17 @@ export function InfiniteCanvas({
   useEffect(() => {
     const el = viewportRef.current
     if (!el) return
+    let first = true
     const observer = new ResizeObserver(([entry]) => {
       setViewportSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+      if (first) {
+        first = false
+        recenterView()
+      }
     })
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+  }, [recenterView])
 
   const cullPan = useMemo(() => {
     const q = STEP / 2
@@ -365,6 +382,7 @@ export function InfiniteCanvas({
           const px = widgetPixelSize(w.size)
           const hit = matchesQuery(w, query)
           const isDragged = draggingId === w.id
+          const isHiddenCard = !!w.hidden
           const gallery =
             w.category === 'image'
               ? normalizeImageGallery(w as ImageWidgetConfig)
@@ -374,6 +392,7 @@ export function InfiniteCanvas({
               key={w.id}
               id={`widget-${w.id}`}
               data-canvas-card
+              data-widget-hidden={isHiddenCard ? 'true' : undefined}
               onDragStart={(e) => e.preventDefault()}
               className="absolute cursor-pointer select-none"
               initial={false}
@@ -382,12 +401,16 @@ export function InfiniteCanvas({
                 top: y * STEP,
                 width: px.width,
                 height: px.height,
-                opacity: hit ? 1 : 0.25,
+                opacity: hit ? (isEditing && isHiddenCard ? 0.38 : 1) : 0.25,
                 scale: isDragged ? 1.045 : selectedWidgetIds.includes(w.id) ? 1.018 : 1,
                 zIndex: isDragged ? 40 : 1,
                 boxShadow: isDragged
                   ? '0 18px 40px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)'
-                  : selectedWidgetIds.includes(w.id) ? '0 12px 30px rgba(0,0,0,.12)' : '0 0px 0px rgba(0,0,0,0)',
+                  : isEditing && isHiddenCard
+                    ? '0 0 0 1.5px rgba(245, 158, 11, 0.85)'
+                    : selectedWidgetIds.includes(w.id)
+                      ? '0 12px 30px rgba(0,0,0,.12)'
+                      : '0 0px 0px rgba(0,0,0,0)',
               }}
               transition={{
                 type: 'spring',
@@ -429,6 +452,11 @@ export function InfiniteCanvas({
                   onConfigChange={(u) => onUpdateWidget(w.id, u)}
                 />
               </div>
+              {isEditing && isHiddenCard && (
+                <div className="pointer-events-none absolute left-2 top-2 rounded-full bg-amber-400/95 px-2 py-0.5 text-[10px] font-semibold text-black shadow">
+                  已隐藏
+                </div>
+              )}
               {isEditing && selectedWidgetId === w.id && !editingWidgetId && !isDragged && (
                 <WidgetEditOverlay
                   widget={w}
@@ -459,7 +487,13 @@ export function InfiniteCanvas({
 
       <div data-canvas-chrome className="fixed right-6 top-6 z-[1000] flex items-center gap-1 rounded-full border border-white/70 bg-white/75 p-1 shadow-lg backdrop-blur-xl">
         <button className="size-8 rounded-full hover:bg-black/5" onClick={() => setZoom((value) => Math.max(.35, value - .1))}>−</button>
-        <button className="min-w-12 rounded-full px-2 text-xs font-semibold" onClick={() => { setZoom(1); centeredVersion.current = null }}>{Math.round(zoom * 100)}%</button>
+        <button
+          className="min-w-12 rounded-full px-2 text-xs font-semibold"
+          title="重置缩放并居中"
+          onClick={() => { setZoom(1); recenterView() }}
+        >
+          {Math.round(zoom * 100)}%
+        </button>
         <button className="size-8 rounded-full hover:bg-black/5" onClick={() => setZoom((value) => Math.min(1.8, value + .1))}>＋</button>
       </div>
 
