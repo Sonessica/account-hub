@@ -74,7 +74,7 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
         <BentoCard
             size={size}
             disableHover
-            style={{ pointerEvents: 'none', position: 'relative', overflow: 'hidden' }}
+            style={{ pointerEvents: isEditing ? 'none' : 'auto', position: 'relative', overflow: 'hidden' }}
         >
             <CoverMedia
                 image={cover}

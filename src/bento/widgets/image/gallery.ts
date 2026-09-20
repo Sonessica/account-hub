@@ -13,8 +13,12 @@ function newImageId(): string {
   return `img-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-export function createGalleryImage(src: string, alt?: string): GalleryImage {
-  return { id: newImageId(), src, alt }
+export function createGalleryImage(
+  src: string,
+  alt?: string,
+  media: Pick<GalleryImage, 'type' | 'videoSrc' | 'duration'> = {},
+): GalleryImage {
+  return { id: newImageId(), src, alt, ...media }
 }
 
 /** Normalize legacy single-image widgets into a gallery shape. */
@@ -27,7 +31,14 @@ export function normalizeImageGallery(widget: ImageWidgetConfig): {
 } {
   const raw = Array.isArray(widget.images) ? widget.images.filter((img) => !!img?.src) : []
   const images: GalleryImage[] = raw.length
-    ? raw.map((img) => ({ id: img.id || createGalleryImage(img.src).id, src: img.src, alt: img.alt }))
+    ? raw.map((img) => ({
+        id: img.id || createGalleryImage(img.src).id,
+        src: img.src,
+        type: img.type || (img.videoSrc ? 'video' : 'image'),
+        videoSrc: img.videoSrc,
+        duration: img.duration,
+        alt: img.alt,
+      }))
     : widget.src
       ? [{ id: createGalleryImage(widget.src).id, src: widget.src, alt: widget.alt }]
       : []

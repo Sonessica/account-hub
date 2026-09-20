@@ -11,7 +11,8 @@ import { RadialNavigation } from '@/components/site/RadialNavigation'
 import { resolveCanvasDrop } from '@/bento/editor/canvasPlacement'
 import type { WidgetConfig } from '@/bento/widgets/types'
 import { createImageWidgetConfig, createLinkWidgetConfig } from '@/bento/widgets'
-import { uploadImage } from '@/lib/client/upload-image'
+import { createGalleryImage } from '@/bento/widgets/image/gallery'
+import { pairMediaFiles, uploadMedia } from '@/lib/client/upload-image'
 
 // ============ Editor View Wrapper ============
 
@@ -137,9 +138,17 @@ const EditorContent: React.FC<{ centerVersion: number; showSearch: boolean; spac
             space={space}
             onExternalDrop={async ({ urls, files }) => {
                 urls.forEach((url) => addWidget(createLinkWidgetConfig(url, '1x1')))
-                for (const file of files.filter((item) => item.type.startsWith('image/'))) {
-                    const uploaded = await uploadImage(file)
-                    addWidget(createImageWidgetConfig(uploaded, '1x1'))
+                for (const item of pairMediaFiles(files)) {
+                    const uploaded = await uploadMedia(item.photo, item.video)
+                    const media = createGalleryImage(uploaded.url, undefined, {
+                        type: uploaded.type,
+                        videoSrc: uploaded.videoUrl,
+                        duration: uploaded.duration,
+                    })
+                    addWidget(createImageWidgetConfig(uploaded.url, '1x1', {
+                        images: [media],
+                        coverId: media.id,
+                    }))
                 }
             }}
         />

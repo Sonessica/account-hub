@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { CoverEffect, GalleryImage } from '../types'
 
 const CONCRETE_EFFECTS = [
@@ -153,6 +153,9 @@ export function CoverMedia({
   /** Change this value to re-roll random effect + reveal direction */
   effectSeed?: number
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const hoverTimer = useRef<number | undefined>(undefined)
+  const [playing, setPlaying] = useState(false)
   const resolved = useMemo(() => {
     if (!enableEffect) {
       return { concrete: 'crossfade' as ConcreteEffect, revealFrom: 'inset(0% 0% 0% 0%)', seed: effectSeed }
@@ -170,8 +173,29 @@ export function CoverMedia({
     ? `${image.id}::${resolved.concrete}::${effectSeed}::${resolved.revealFrom}`
     : image.id
 
+  const startPreview = () => {
+    if (!image.videoSrc) return
+    window.clearTimeout(hoverTimer.current)
+    hoverTimer.current = window.setTimeout(() => {
+      const video = videoRef.current
+      if (!video) return
+      setPlaying(true)
+      void video.play().catch(() => setPlaying(false))
+    }, 300)
+  }
+
+  const stopPreview = () => {
+    window.clearTimeout(hoverTimer.current)
+    const video = videoRef.current
+    if (video) {
+      video.pause()
+      video.currentTime = 0
+    }
+    setPlaying(false)
+  }
+
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className="absolute inset-0 overflow-hidden" onPointerEnter={startPreview} onPointerLeave={stopPreview}>
       <AnimatePresence initial={false}>
         <motion.div
           key={layerKey}
@@ -187,6 +211,24 @@ export function CoverMedia({
             className="h-full w-full select-none"
             style={{ objectFit }}
           />
+          {image.videoSrc && (
+            <video
+              ref={videoRef}
+              src={image.videoSrc}
+              poster={image.src}
+              muted
+              playsInline
+              preload="metadata"
+              onEnded={stopPreview}
+              className="absolute inset-0 h-full w-full select-none transition-opacity duration-200"
+              style={{ objectFit, opacity: playing ? 1 : 0 }}
+            />
+          )}
+          {image.videoSrc && !playing && (
+            <div className="pointer-events-none absolute right-2 top-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold tracking-wide text-white backdrop-blur-sm">
+              {image.type === 'live-photo' ? 'LIVE' : '▶ VIDEO'}
+            </div>
+          )}
           {enableEffect && resolved.concrete === 'shutter' && (
             <motion.div
               key={`flash-${layerKey}`}

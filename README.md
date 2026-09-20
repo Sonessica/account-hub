@@ -1,6 +1,6 @@
 # ATCHOOO
 
-ATCHOOO `0.7.0` 是一个基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的、自托管个人空间。它以 Bento 无限画布为核心，通过 HOME、NOTES、GALLERY、BOOKMARKS 四个独立 Space 管理和展示链接、图片、文字与位置等内容。
+ATCHOOO `0.7.1` 是一个基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的、自托管个人空间。它以 Bento 无限画布为核心，通过 HOME、NOTES、GALLERY、BOOKMARKS 四个独立 Space 管理和展示链接、媒体、文字与位置等内容。
 
 当前版本面向桌面浏览器和个人使用场景。访客模式与编辑模式使用同一份 NAS SQLite 数据，修改会自动保存。
 
@@ -77,7 +77,7 @@ ATCHOOO `0.7.0` 是一个基于 [OpenBento](https://github.com/bravohenry/openbe
 编辑模式下的添加工具栏支持：
 
 - Link：粘贴或输入 URL，自动识别 GitHub、YouTube、X/Twitter、Spotify 等平台，并生成对应链接卡片。
-- Image：上传图片；服务端使用 `sharp` 转换、压缩为 WebP，SQLite 只保存媒体路径。
+- Media：上传静态图片、Live Photo 或视频；图片压缩为 WebP，动态内容转为 H.264/AAC MP4，SQLite 只保存媒体路径。
 - Text：添加文字/便签卡片。
 - Map：添加地图卡片并搜索位置。
 - Section：添加分区标题卡片。
@@ -96,10 +96,10 @@ ATCHOOO `0.7.0` 是一个基于 [OpenBento](https://github.com/bravohenry/openbe
 编辑模式下可以把内容直接拖入画布：
 
 - 从浏览器拖入 URL：自动创建链接卡片。
-- 拖入一张本地图片：上传并创建图片卡片。
-- 同时拖入多张图片：逐张上传并创建多个图片卡片。
+- 拖入本地图片或视频：上传并创建媒体卡片。
+- 同时拖入同名照片与 MOV：自动配对为 Live Photo；其他文件分别作为静态图片或视频。
 
-单张图片上限为 20 MB。上传完成后图片作为独立 WebP 文件保存在媒体目录，不会以 base64 写入页面快照。
+单张图片上限为 20 MB，单个视频上限为 200 MB。上传后静态封面作为 WebP、动态内容作为 MP4 保存在媒体目录，不会以 base64 写入页面快照。
 
 ### 选择与操作卡片
 
@@ -163,10 +163,11 @@ Undo/Redo 使用统一快照历史，覆盖创建、删除、复制、内容更�
 - 根据 URL 自动检测平台并使用平台默认信息。
 - 支持 GitHub、YouTube、X/Twitter、Instagram、TikTok、Spotify、LinkedIn、Facebook、Pinterest、Threads、Discord、Telegram、Twitch、Medium、Reddit 等平台及通用链接。
 
-### Image / Gallery
+### Media / Gallery
 
-- 单个图片卡片可保存最多 9 张图片。
-- 支持批量上传、拖动排序、删除图片、双击设置封面。
+- 单个媒体卡片可混合保存最多 9 个静态图片、Live Photo 或视频。
+- 支持批量上传、同名照片/MOV 自动配对、拖动排序、删除媒体、双击设置封面。
+- Live Photo 和视频默认显示静态封面；浏览模式悬停约 300ms 后静音预览，灯箱中可完整播放。
 - 支持固定封面或随机封面。
 - 支持 Crossfade、Blur、Drift、Ken Burns、Reveal、Shutter 和随机切换效果。
 - 支持封面切换间隔、标题、副标题与 cover/contain 显示模式。
@@ -213,11 +214,11 @@ Undo/Redo 使用统一快照历史，覆盖创建、删除、复制、内容更�
 | 内容 | 默认位置 |
 | --- | --- |
 | Space 快照、revision、版本历史 | `./data/atchooo-space.sqlite` |
-| 上传并压缩后的 WebP 图片 | `./data/media/` |
+| 上传并处理后的 WebP 图片与 MP4 视频 | `./data/media/` |
 | 每个 Space 的 Pan / Zoom | 浏览器 localStorage |
 | 首次迁移使用的旧卡片 | 浏览器 localStorage |
 
-页面快照请求上限为 20 MB，单张原始上传图片上限为 20 MB。SQLite 使用 WAL 模式，运行时可能出现 `atchooo-space.sqlite-wal` 和 `atchooo-space.sqlite-shm`。备份、恢复与一致性要求见 [NAS 数据说明](docs/NAS_SQLITE_PERSISTENCE.md)。
+页面快照请求上限为 20 MB，单张原始图片上限为 20 MB，单个视频上限为 200 MB。SQLite 使用 WAL 模式，运行时可能出现 `atchooo-space.sqlite-wal` 和 `atchooo-space.sqlite-shm`。备份、恢复与一致性要求见 [NAS 数据说明](docs/NAS_SQLITE_PERSISTENCE.md)。
 
 ## NAS / Docker 部署
 
@@ -262,7 +263,7 @@ npm run build
 
 - Next.js 16、React 19、TypeScript 5。
 - Framer Motion、Tailwind CSS 4。
-- Node.js `node:sqlite`、Sharp WebP 图片处理。
+- Node.js `node:sqlite`、Sharp WebP 图片处理、FFmpeg 视频转码与封面提取。
 - MapLibre GL、Docker Compose。
 
 ## 当前权限边界

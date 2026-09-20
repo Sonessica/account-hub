@@ -471,7 +471,7 @@ export function InfiniteCanvas({
               <div
                 data-canvas-card-content
                 className="h-full w-full overflow-hidden rounded-[27px]"
-                style={{ pointerEvents: 'none' }}
+                style={{ pointerEvents: !isEditing && w.category === 'image' ? 'auto' : 'none' }}
               >
                 <WidgetRenderer
                   config={w}
@@ -546,15 +546,31 @@ export function InfiniteCanvas({
                 </motion.div>
               )}
 
-              <motion.img
-                key={lightboxImage.id}
-                src={lightboxImage.src}
-                alt={lightboxImage.alt || lightboxTitle || ''}
-                className="max-h-[70vh] w-auto max-w-full rounded-[28px] object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
-                initial={{ opacity: 0.65, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 220, damping: 20 }}
-              />
+              {lightboxImage.videoSrc ? (
+                <motion.video
+                  key={lightboxImage.id}
+                  src={lightboxImage.videoSrc}
+                  poster={lightboxImage.src}
+                  controls
+                  autoPlay
+                  playsInline
+                  muted={lightboxImage.type === 'live-photo'}
+                  className="max-h-[70vh] w-auto max-w-full rounded-[28px] object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
+                  initial={{ opacity: 0.65, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                />
+              ) : (
+                <motion.img
+                  key={lightboxImage.id}
+                  src={lightboxImage.src}
+                  alt={lightboxImage.alt || lightboxTitle || ''}
+                  className="max-h-[70vh] w-auto max-w-full rounded-[28px] object-contain shadow-[0_24px_80px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
+                  initial={{ opacity: 0.65, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+                />
+              )}
 
               <div className="mt-2 text-xs text-white/55">
                 {lightboxIndex + 1} / {lightboxImages.length}

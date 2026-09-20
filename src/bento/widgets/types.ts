@@ -93,6 +93,11 @@ export interface LinkWidgetConfig extends BaseWidgetConfig {
 export interface GalleryImage {
     id: string
     src: string
+    /** Missing on legacy snapshots; defaults to a static image. */
+    type?: 'image' | 'live-photo' | 'video'
+    /** H.264/AAC MP4 used by Live Photos and videos. */
+    videoSrc?: string
+    duration?: number
     alt?: string
 }
 

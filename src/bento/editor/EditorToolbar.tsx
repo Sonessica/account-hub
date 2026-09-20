@@ -29,7 +29,8 @@ import {
 import { cn } from '@/design-system/utils/cn'
 import { useClickOutside } from './hooks/useClickOutside'
 import { useDeviceDetection } from './hooks/useDeviceDetection'
-import { uploadImage } from '@/lib/client/upload-image'
+import { pairMediaFiles, uploadMedia } from '@/lib/client/upload-image'
+import { createGalleryImage } from '@/bento/widgets/image/gallery'
 
 // ============ Icons (Phosphor Icons - Duotone Style with Dopamine Colors) ============
 
@@ -263,22 +264,34 @@ export const EditorToolbar: React.FC = () => {
         fileInputRef.current?.click()
     }
 
-    const addUploadedImage = useCallback(async (file: File) => {
-        setImageUploadStatus('正在压缩并上传图片…')
+    const addUploadedMedia = useCallback(async (files: FileList | File[]) => {
+        const items = pairMediaFiles(files)
+        if (!items.length) return
+        setImageUploadStatus(`正在处理 ${items.length} 项媒体…`)
         try {
-            const url = await uploadImage(file)
-            addWidget(createImageWidgetConfig(url, '1x1'))
+            const media = []
+            for (const item of items.slice(0, 9)) {
+                const uploaded = await uploadMedia(item.photo, item.video)
+                media.push(createGalleryImage(uploaded.url, undefined, {
+                    type: uploaded.type,
+                    videoSrc: uploaded.videoUrl,
+                    duration: uploaded.duration,
+                }))
+            }
+            const first = media[0]
+            addWidget(createImageWidgetConfig(first.src, '1x1', {
+                images: media,
+                coverId: first.id,
+                src: first.src,
+            }))
             setImageUploadStatus(null)
         } catch (error) {
-            setImageUploadStatus(error instanceof Error ? error.message : '图片上传失败')
+            setImageUploadStatus(error instanceof Error ? error.message : '媒体上传失败')
         }
     }, [addWidget])
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (file && file.type.startsWith('image/')) {
-            void addUploadedImage(file)
-        }
+        if (e.target.files?.length) void addUploadedMedia(e.target.files)
         // Reset input so same file can be selected again
         if (fileInputRef.current) {
             fileInputRef.current.value = ''
@@ -297,7 +310,7 @@ export const EditorToolbar: React.FC = () => {
                     e.preventDefault()
                     const file = item.getAsFile()
                     if (file) {
-                        void addUploadedImage(file)
+                        void addUploadedMedia([file])
                     }
                     break
                 }
@@ -308,7 +321,7 @@ export const EditorToolbar: React.FC = () => {
         return () => {
             document.removeEventListener('paste', handlePaste)
         }
-    }, [addUploadedImage])
+    }, [addUploadedMedia])
 
     const handleAddText = () => {
         addWidget(createTextWidgetConfig('', 'note', '1x1'))
@@ -328,10 +341,11 @@ export const EditorToolbar: React.FC = () => {
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/quicktime,video/mp4,.mov"
+                multiple
                 onChange={handleFileSelect}
                 className="hidden"
-                aria-label="Upload image"
+                aria-label="Upload image, Live Photo, or video"
             />
             {imageUploadStatus && (
                 <div className="fixed bottom-[104px] left-1/2 z-[2001] -translate-x-1/2 rounded-xl bg-black px-4 py-2 text-sm text-white shadow-xl">

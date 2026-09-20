@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GalleryImage, ImageWidgetConfig } from '../widgets/types'
 import { COVER_EFFECT_OPTIONS, DEFAULT_COVER_EFFECT, GALLERY_MAX_IMAGES } from '../widgets/types'
-import { uploadImage } from '@/lib/client/upload-image'
+import { pairMediaFiles, uploadMedia } from '@/lib/client/upload-image'
 import {
     buildGalleryPatch,
     createGalleryImage,
@@ -25,7 +25,8 @@ function OptionalText({ value, onChange, placeholder }: {
         onChange={event => onChange(event.target.value || undefined)} />
 }
 
-function ImagePreview({ src }: { src: string }) {
+function ImagePreview({ image }: { image: GalleryImage | null }) {
+    const src = image?.src || ''
     const viewportRef = useRef<HTMLDivElement>(null)
     const [scale, setScale] = useState(1)
     const [offset, setOffset] = useState({ x: 0, y: 0 })
@@ -85,7 +86,17 @@ function ImagePreview({ src }: { src: string }) {
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
             >
-                {src ? (
+                {image?.videoSrc ? (
+                    <video
+                        key={image.videoSrc}
+                        src={image.videoSrc}
+                        poster={image.src}
+                        controls
+                        muted={image.type === 'live-photo'}
+                        playsInline
+                        className="absolute inset-0 h-full w-full object-contain"
+                    />
+                ) : src ? (
                     <img
                         src={src}
                         alt=""
@@ -162,7 +173,9 @@ export function ImageEditorModal({
 
     const uploadFiles = async (fileList: FileList | File[] | null | undefined) => {
         if (!fileList) return
-        const files = Array.from(fileList).filter((file) => file.type.startsWith('image/'))
+        const files = Array.from(fileList).filter((file) =>
+            file.type.startsWith('image/') || file.type.startsWith('video/') || /\.mov$/i.test(file.name),
+        )
         if (!files.length) return
 
         const remaining = GALLERY_MAX_IMAGES - images.length
@@ -171,19 +184,24 @@ export function ImageEditorModal({
             return
         }
 
-        const toUpload = files.slice(0, remaining)
-        if (files.length > remaining) {
-            setStatus(`超出上限，本次仅上传前 ${remaining} 张（上限 ${GALLERY_MAX_IMAGES}）`)
+        const uploadItems = pairMediaFiles(files)
+        const toUpload = uploadItems.slice(0, remaining)
+        if (uploadItems.length > remaining) {
+            setStatus(`超出上限，本次仅上传前 ${remaining} 项（上限 ${GALLERY_MAX_IMAGES}）`)
         } else {
             setStatus(`正在上传 ${toUpload.length} 张…`)
         }
 
         const added: GalleryImage[] = []
         let failed = 0
-        for (const file of toUpload) {
+        for (const item of toUpload) {
             try {
-                const url = await uploadImage(file)
-                added.push(createGalleryImage(url))
+                const media = await uploadMedia(item.photo, item.video)
+                added.push(createGalleryImage(media.url, undefined, {
+                    type: media.type,
+                    videoSrc: media.videoUrl,
+                    duration: media.duration,
+                }))
             } catch {
                 failed += 1
             }
@@ -256,7 +274,7 @@ export function ImageEditorModal({
                 onClick={event => event.stopPropagation()}
             >
                 <div className="flex min-h-[240px] flex-1 flex-col bg-[#F5F5F7] p-4 md:min-w-0 md:p-5">
-                    <ImagePreview src={previewImage?.src || ''} />
+                    <ImagePreview image={previewImage} />
                     {images.length > 1 && (
                         <div className="mt-2 text-center text-xs text-black/45">
                             预览 {safePreviewIndex + 1} / {images.length}
@@ -307,7 +325,7 @@ export function ImageEditorModal({
                                 ref={fileInputRef}
                                 className="hidden"
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,video/quicktime,video/mp4,.mov"
                                 multiple
                                 onChange={event => {
                                     void uploadFiles(event.target.files)
@@ -316,7 +334,7 @@ export function ImageEditorModal({
                             />
                             {status && <span className="text-xs font-normal text-black/50">{status}</span>}
                             <span className="text-[11px] font-normal text-black/40">
-                                拖拽缩略图可排序；点击选中；「封面」标记当前展示图。
+                                可同时选择同名照片和 MOV 组成 Live Photo；也支持独立视频。拖拽缩略图可排序。
                             </span>
                         </div>
 
@@ -354,6 +372,11 @@ export function ImageEditorModal({
                                                 aria-label={`图片 ${index + 1}`}
                                             >
                                                 <img src={image.src} alt="" className="h-full w-full object-cover" draggable={false} />
+                                                {image.videoSrc && (
+                                                    <span className="absolute left-1 top-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                                                        {image.type === 'live-photo' ? 'LIVE' : 'VIDEO'}
+                                                    </span>
+                                                )}
                                             </button>
                                             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/45 px-1 py-0.5 text-[10px] text-white">
                                                 <span>#{index + 1}</span>
