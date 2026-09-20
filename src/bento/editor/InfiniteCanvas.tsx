@@ -15,6 +15,14 @@ import type { GalleryImage, ImageWidgetConfig, WidgetConfig, WidgetSize } from '
 import { WIDGET_SIZES } from '@/bento/widgets/types'
 import { resolveCanvasDrop, resolveCanvasResize, SEARCH_COLS } from './canvasPlacement'
 import { normalizeImageGallery, resolveCoverIndex } from '@/bento/widgets/image/gallery'
+import {
+  bindCanvasRecenter,
+  bindCanvasZoom,
+  clampZoom,
+  publishCanvasZoom,
+  unbindCanvasRecenter,
+  unbindCanvasZoom,
+} from './canvasViewControls'
 
 const STEP = BENTO_UNIT + BENTO_GAP
 
@@ -147,6 +155,25 @@ export function InfiniteCanvas({
     const timer = window.setTimeout(() => localStorage.setItem(`atchooo-space-view-${space}`, JSON.stringify({ pan, zoom })), 180)
     return () => window.clearTimeout(timer)
   }, [pan, space, zoom])
+
+  // Expose zoom/recenter to Settings modal
+  useEffect(() => {
+    bindCanvasZoom((next) => {
+      setZoom((prev) => {
+        const value = typeof next === 'function' ? next(prev) : next
+        return clampZoom(value)
+      })
+    })
+    bindCanvasRecenter(recenterView)
+    return () => {
+      unbindCanvasZoom()
+      unbindCanvasRecenter()
+    }
+  }, [recenterView])
+
+  useEffect(() => {
+    publishCanvasZoom(zoom)
+  }, [zoom])
 
   useEffect(() => {
     const el = viewportRef.current
@@ -341,7 +368,7 @@ export function InfiniteCanvas({
       onWheel={(event) => {
         if (!event.ctrlKey && !event.metaKey) return
         event.preventDefault()
-        setZoom((value) => Math.min(1.8, Math.max(.35, value - event.deltaY * .001)))
+        setZoom((value) => clampZoom(value - event.deltaY * .001))
       }}
       onDragOver={(event) => { if (isEditing) event.preventDefault() }}
       onDrop={(event) => {
@@ -484,18 +511,6 @@ export function InfiniteCanvas({
       </div>
 
       {onAutoLayout && null}
-
-      <div data-canvas-chrome className="fixed right-6 top-6 z-[1000] flex items-center gap-1 rounded-full border border-white/70 bg-white/75 p-1 shadow-lg backdrop-blur-xl">
-        <button className="size-8 rounded-full hover:bg-black/5" onClick={() => setZoom((value) => Math.max(.35, value - .1))}>−</button>
-        <button
-          className="min-w-12 rounded-full px-2 text-xs font-semibold"
-          title="重置缩放并居中"
-          onClick={() => { setZoom(1); recenterView() }}
-        >
-          {Math.round(zoom * 100)}%
-        </button>
-        <button className="size-8 rounded-full hover:bg-black/5" onClick={() => setZoom((value) => Math.min(1.8, value + .1))}>＋</button>
-      </div>
 
       <AnimatePresence>
         {lightbox && lightboxImage && (

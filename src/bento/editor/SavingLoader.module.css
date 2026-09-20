@@ -1,32 +1,23 @@
-/* Adapted from https://uiverse.io/ashif_6672/empty-wombat-2
- * Copyright (c) 2026 ashif_6672 (Ashif)
- * MIT License: Permission is hereby granted, free of charge, to any person
- * obtaining a copy of this software and associated documentation files (the
- * "Software"), to deal in the Software without restriction, including without
- * limitation the rights to use, copy, modify, merge, publish, distribute,
- * sublicense, and/or sell copies of the Software, and to permit persons to whom
- * the Software is furnished to do so, subject to the following conditions:
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED
- * "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
- * NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
- * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+/* Save indicator — transparent container, no card/chrome background.
+ * Animation adapted from https://uiverse.io/ashif_6672/empty-wombat-2 (MIT)
  */
 
 .loader {
-  height: 42px;
+  height: 36px;
   aspect-ratio: 2;
   position: relative;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  outline: none;
 }
 
 .loader::before {
   content: '';
   position: absolute;
   inset: 100% 75% -3px 0;
-  background: #524656;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 2px;
   animation: beam 1s linear infinite alternate;
 }
 
@@ -36,7 +27,7 @@
   inset: auto 42.5% 0;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: #cf4647;
+  background: rgba(255, 255, 255, 0.92);
   animation:
     bounce 1s cubic-bezier(0, 700, 1, 700) infinite alternate,
     travel 1s linear infinite alternate;

@@ -142,10 +142,17 @@ function PersistenceSync({ initial, space }: { initial: Stored | null; space: st
   }, [widgets, profile, siteSettings, initial, save])
 
   if (status === 'saved') return null
-  if (status === 'saving') return <div role="status" aria-label="正在保存到 NAS" className="fixed top-3 right-4 z-[100] rounded-xl bg-white/95 px-3 pb-3 pt-1 shadow-lg">
-    <div className={savingLoader.loader} aria-hidden="true" />
-  </div>
-  return <div role="alert" className="fixed top-4 right-4 z-[100] rounded-xl bg-white/95 px-4 py-2 text-sm text-black shadow-lg">
+  if (status === 'saving') return (
+    <div
+      role="status"
+      aria-label="正在保存到 NAS"
+      className="pointer-events-none fixed right-4 top-3 z-[100] bg-transparent p-0 shadow-none ring-0 backdrop-blur-none"
+      style={{ background: 'transparent', boxShadow: 'none' }}
+    >
+      <div className={savingLoader.loader} aria-hidden="true" />
+    </div>
+  )
+  return <div role="alert" className="fixed top-4 right-4 z-[100] rounded-xl border border-white/10 bg-black/55 px-4 py-2 text-sm text-white shadow-lg backdrop-blur-md">
     {status === 'error' && <><span>保存失败，修改仍在此浏览器。</span><button className="ml-3 underline" onClick={() => void save()}>重试</button></>}
     {status === 'conflict' && <><span>其他浏览器已更新，请先刷新页面。</span><button className="ml-3 underline" onClick={() => location.reload()}>刷新</button></>}
   </div>

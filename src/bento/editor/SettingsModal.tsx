@@ -1,23 +1,85 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ProfileData } from './EditorContext'
 import { uploadImage } from '@/lib/client/upload-image'
+import {
+  getCanvasZoom,
+  recenterCanvas,
+  resetCanvasView,
+  setCanvasZoom,
+  stepCanvasZoom,
+  subscribeCanvasZoom,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from './canvasViewControls'
 
 const fieldClass = 'w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/5'
 const labelClass = 'grid gap-1.5 text-xs font-medium text-black/60'
 const btnClass = 'rounded-xl bg-black px-3 py-2.5 text-sm font-medium text-white hover:bg-black/80'
 const btnGhostClass = 'rounded-xl border border-black/15 px-3 py-2.5 text-sm font-medium text-black hover:bg-black/5'
 
-export const APP_VERSION = '0.4.1'
+export const APP_VERSION = '0.7.1'
 
-type Tab = 'profile' | 'data' | 'about'
+type Tab = 'profile' | 'view' | 'data' | 'about'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'profile', label: '个人资料' },
+  { id: 'view', label: '画布' },
   { id: 'data', label: '数据' },
   { id: 'about', label: '关于' },
 ]
+
+function CanvasZoomControls() {
+  const zoom = useSyncExternalStore(subscribeCanvasZoom, getCanvasZoom, () => 1)
+  const percent = Math.round(zoom * 100)
+
+  return (
+    <div className="grid gap-4">
+      <div className={labelClass}>
+        <span>缩放</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={btnGhostClass} onClick={() => stepCanvasZoom(-1)} aria-label="缩小">−</button>
+          <div className="min-w-[4.5rem] rounded-xl border border-black/10 bg-white px-3 py-2 text-center text-sm font-semibold tabular-nums">
+            {percent}%
+          </div>
+          <button type="button" className={btnGhostClass} onClick={() => stepCanvasZoom(1)} aria-label="放大">＋</button>
+          <button
+            type="button"
+            className={btnClass}
+            onClick={() => { setCanvasZoom(1); recenterCanvas() }}
+          >
+            重置并居中
+          </button>
+        </div>
+        <input
+          type="range"
+          min={Math.round(ZOOM_MIN * 100)}
+          max={Math.round(ZOOM_MAX * 100)}
+          step={1}
+          value={percent}
+          onChange={(e) => setCanvasZoom(Number(e.target.value) / 100)}
+          className="mt-1 w-full accent-black"
+          aria-label="画布缩放"
+        />
+        <span className="text-[11px] font-normal text-black/45">
+          范围 {Math.round(ZOOM_MIN * 100)}%–{Math.round(ZOOM_MAX * 100)}%；也可在画布上 Ctrl/⌘ + 滚轮缩放。
+        </span>
+      </div>
+
+      <div className={labelClass}>
+        <span>视图</span>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={btnGhostClass} onClick={() => recenterCanvas()}>居中锚点</button>
+          <button type="button" className={btnGhostClass} onClick={() => resetCanvasView()}>恢复默认视图</button>
+        </div>
+        <span className="text-[11px] font-normal text-black/45">
+          首页以搜索框为中心，其他空间以画布原点为中心；切换空间时会自动居中。
+        </span>
+      </div>
+    </div>
+  )
+}
 
 export function SettingsModal({
   profile,
@@ -84,13 +146,13 @@ export function SettingsModal({
         className="flex max-h-[min(88vh,720px)] w-full max-w-[min(96vw,920px)] flex-col overflow-hidden rounded-3xl bg-white text-black shadow-2xl ring-1 ring-black/5 md:flex-row"
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <nav className="flex shrink-0 gap-1 border-b border-black/5 p-3 md:w-40 md:flex-col md:border-b-0 md:border-r md:p-4">
+        <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-black/5 p-3 md:w-40 md:flex-col md:overflow-visible md:border-b-0 md:border-r md:p-4">
           {TABS.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setTab(item.id)}
-              className={`rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
+              className={`shrink-0 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
                 tab === item.id ? 'bg-black text-white' : 'text-black/70 hover:bg-black/5'
               }`}
             >
@@ -103,7 +165,9 @@ export function SettingsModal({
           <div className="flex items-start justify-between gap-3 border-b border-black/5 px-5 py-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/35">ATCHOOO</p>
-              <h2 className="mt-1 text-lg font-semibold">设置</h2>
+              <h2 className="mt-1 text-lg font-semibold">
+                {tab === 'profile' ? '个人资料' : tab === 'view' ? '画布视图' : tab === 'data' ? '数据' : '关于'}
+              </h2>
             </div>
             <button type="button" onClick={onClose} aria-label="关闭设置"
               className="grid size-9 shrink-0 place-items-center rounded-full bg-black/5 text-xl leading-none hover:bg-black/10">×</button>
@@ -137,6 +201,8 @@ export function SettingsModal({
                 </label>
               </div>
             )}
+
+            {tab === 'view' && <CanvasZoomControls />}
 
             {tab === 'data' && (
               <div className="grid gap-4">
