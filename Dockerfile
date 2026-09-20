@@ -18,13 +18,13 @@ RUN npm run build
 FROM docker.1ms.run/library/node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/package.json /app/package-lock.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/scripts ./scripts
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 EXPOSE 3000
 CMD ["npm", "run", "start"]
