@@ -45,9 +45,10 @@ async function storeVideo(file: File, id: string, createPoster: boolean) {
   const frameOutput = resolve(mediaDirectory(), `.${id}-frame.png`)
   await writeFile(input, Buffer.from(await file.arrayBuffer()), { flag: 'wx' })
   try {
-    // -2 keeps aspect ratio and forces even width/height (libx264 rejects odd dims).
-    // Do not combine with force_original_aspect_ratio — it can emit odd heights (e.g. 1920x3413).
-    const scale = "scale='min(1920,iw)':-2"
+    // Keep the entire frame within 1920x1920 and force both dimensions to be
+    // even. This avoids libx264 failures without turning a 2160x3840 portrait
+    // clip into an unnecessarily expensive 1920x3414 encode.
+    const scale = 'scale=1920:1920:force_original_aspect_ratio=decrease:force_divisible_by=2'
     try {
       await runFfmpeg([
         '-y', '-i', input,
