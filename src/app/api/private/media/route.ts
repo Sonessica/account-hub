@@ -45,12 +45,25 @@ async function storeVideo(file: File, id: string, createPoster: boolean) {
   const frameOutput = resolve(mediaDirectory(), `.${id}-frame.png`)
   await writeFile(input, Buffer.from(await file.arrayBuffer()), { flag: 'wx' })
   try {
-    await runFfmpeg([
-      '-y', '-i', input,
-      '-vf', "scale='min(1920,iw)':-2:force_original_aspect_ratio=decrease",
-      '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-pix_fmt', 'yuv420p',
-      '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', videoOutput,
-    ])
+    // -2 keeps aspect ratio and forces even width/height (libx264 rejects odd dims).
+    // Do not combine with force_original_aspect_ratio — it can emit odd heights (e.g. 1920x3413).
+    const scale = "scale='min(1920,iw)':-2"
+    try {
+      await runFfmpeg([
+        '-y', '-i', input,
+        '-vf', scale,
+        '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', videoOutput,
+      ])
+    } catch {
+      // Retry without audio (some live clips lack a usable audio stream / HE-AACv2 edge cases)
+      await runFfmpeg([
+        '-y', '-i', input,
+        '-vf', scale,
+        '-c:v', 'libx264', '-preset', 'medium', '-crf', '23', '-pix_fmt', 'yuv420p',
+        '-an', '-movflags', '+faststart', videoOutput,
+      ])
+    }
     if (createPoster) {
       await runFfmpeg(['-y', '-ss', '0', '-i', input, '-frames:v', '1', frameOutput])
       const poster = await sharp(frameOutput)
