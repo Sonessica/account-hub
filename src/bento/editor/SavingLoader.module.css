@@ -1,5 +1,6 @@
 /* Save indicator — transparent container, no card/chrome background.
  * Animation adapted from https://uiverse.io/ashif_6672/empty-wombat-2 (MIT)
+ * Colors use brand ink so the mark stays readable on the light canvas (#F5F5F7).
  */
 
 .loader {
@@ -12,22 +13,25 @@
   outline: none;
 }
 
+/* Traveling beam segment */
 .loader::before {
   content: '';
   position: absolute;
   inset: 100% 75% -3px 0;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(29, 78, 216, 0.65);
   border-radius: 2px;
   animation: beam 1s linear infinite alternate;
 }
 
+/* Bouncing ball */
 .loader::after {
   content: '';
   position: absolute;
   inset: auto 42.5% 0;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
+  background: #1d4ed8;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.12);
   animation:
     bounce 1s cubic-bezier(0, 700, 1, 700) infinite alternate,
     travel 1s linear infinite alternate;
