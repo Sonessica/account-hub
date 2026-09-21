@@ -1,6 +1,6 @@
-# ATCHOOO
+﻿# ATCHOOO
 
-ATCHOOO `0.7.1` 是一个基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的、自托管个人空间。它以 Bento 无限画布为核心，通过 HOME、NOTES、GALLERY、BOOKMARKS 四个独立 Space 管理和展示链接、媒体、文字与位置等内容。
+ATCHOOO `0.7.2` 是一个基于 [OpenBento](https://github.com/bravohenry/openbento) 改造的、自托管个人空间。它以 Bento 无限画布为核心，通过 HOME、NOTES、GALLERY、BOOKMARKS 四个独立 Space 管理和展示链接、媒体、文字与位置等内容。
 
 当前版本面向桌面浏览器和个人使用场景。访客模式与编辑模式使用同一份 NAS SQLite 数据，修改会自动保存。
 

@@ -5,7 +5,7 @@
  * Card cover for a single image or an image gallery.
  */
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { BentoCard } from '@/bento/core'
 import type { ImageWidgetConfig, WidgetProps } from '../types'
 import { DEFAULT_COVER_EFFECT } from '../types'
@@ -23,6 +23,8 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     const [liveIndex, setLiveIndex] = useState(() => resolveCoverIndex(config))
     const [effectSeed, setEffectSeed] = useState(0)
     const [pageVisible, setPageVisible] = useState(true)
+    const [mediaPreview, setMediaPreview] = useState(false)
+    const hoverTimer = useRef<number | undefined>(undefined)
 
     useEffect(() => {
         const sync = () => setPageVisible(document.visibilityState === 'visible')
@@ -62,6 +64,25 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     const enableEffect = !isEditing && images.length > 1
     const configuredEffect = gallery.coverEffect || DEFAULT_COVER_EFFECT
 
+    useEffect(() => {
+        return () => window.clearTimeout(hoverTimer.current)
+    }, [])
+
+    useEffect(() => {
+        if (isEditing) setMediaPreview(false)
+    }, [isEditing])
+
+    const onCardPointerEnter = () => {
+        if (isEditing || !cover?.videoSrc) return
+        window.clearTimeout(hoverTimer.current)
+        hoverTimer.current = window.setTimeout(() => setMediaPreview(true), 300)
+    }
+
+    const onCardPointerLeave = () => {
+        window.clearTimeout(hoverTimer.current)
+        setMediaPreview(false)
+    }
+
     if (!cover) {
         return (
             <BentoCard size={size} disableHover style={{ pointerEvents: 'none', background: '#EDEDF0' }}>
@@ -75,6 +96,8 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
             size={size}
             disableHover
             style={{ pointerEvents: isEditing ? 'none' : 'auto', position: 'relative', overflow: 'hidden' }}
+            onPointerEnter={onCardPointerEnter}
+            onPointerLeave={onCardPointerLeave}
         >
             <CoverMedia
                 image={cover}
@@ -84,10 +107,11 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
                 intervalMs={gallery.coverIntervalMs}
                 enableEffect={enableEffect}
                 effectSeed={effectSeed}
+                preview={mediaPreview}
             />
 
             {hasOverlay && (
-                <BentoCard.Overlay gradient="bottom">
+                <BentoCard.Overlay gradient="bottom" style={{ pointerEvents: 'none' }}>
                     {title && (
                         <BentoCard.Title color="inverse" size="lg">
                             {title}

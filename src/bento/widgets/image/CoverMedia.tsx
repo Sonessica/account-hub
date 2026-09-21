@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CoverEffect, GalleryImage } from '../types'
 
 const CONCRETE_EFFECTS = [
@@ -142,6 +142,7 @@ export function CoverMedia({
   intervalMs,
   enableEffect = true,
   effectSeed = 0,
+  preview = false,
 }: {
   image: GalleryImage
   effect: CoverEffect
@@ -152,9 +153,10 @@ export function CoverMedia({
   enableEffect?: boolean
   /** Change this value to re-roll random effect + reveal direction */
   effectSeed?: number
+  /** Controlled by parent card hover; plays muted live/video when true */
+  preview?: boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const hoverTimer = useRef<number | undefined>(undefined)
   const [playing, setPlaying] = useState(false)
   const resolved = useMemo(() => {
     if (!enableEffect) {
@@ -173,19 +175,7 @@ export function CoverMedia({
     ? `${image.id}::${resolved.concrete}::${effectSeed}::${resolved.revealFrom}`
     : image.id
 
-  const startPreview = () => {
-    if (!image.videoSrc) return
-    window.clearTimeout(hoverTimer.current)
-    hoverTimer.current = window.setTimeout(() => {
-      const video = videoRef.current
-      if (!video) return
-      setPlaying(true)
-      void video.play().catch(() => setPlaying(false))
-    }, 300)
-  }
-
   const stopPreview = () => {
-    window.clearTimeout(hoverTimer.current)
     const video = videoRef.current
     if (video) {
       video.pause()
@@ -194,8 +184,26 @@ export function CoverMedia({
     setPlaying(false)
   }
 
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (preview && image.videoSrc) {
+      setPlaying(true)
+      void video.play().catch(() => setPlaying(false))
+      return
+    }
+    video.pause()
+    video.currentTime = 0
+    setPlaying(false)
+  }, [preview, image.videoSrc, image.id, layerKey])
+
+  useEffect(() => () => {
+    const video = videoRef.current
+    if (video) video.pause()
+  }, [])
+
   return (
-    <div className="absolute inset-0 overflow-hidden" onPointerEnter={startPreview} onPointerLeave={stopPreview}>
+    <div className="absolute inset-0 overflow-hidden">
       <AnimatePresence initial={false}>
         <motion.div
           key={layerKey}
