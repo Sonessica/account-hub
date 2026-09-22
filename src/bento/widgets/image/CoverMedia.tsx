@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CoverEffect, GalleryImage } from '../types'
+import { TOUR_VIDEO_MAX_MS } from '../types'
 
 const CONCRETE_EFFECTS = [
   'crossfade',
@@ -37,8 +38,24 @@ function pickRevealFrom() {
 
 function buildLayerMotion(
   effect: ConcreteEffect,
-  options: { intervalMs: number; revealFrom: string },
+  options: { intervalMs: number; revealFrom: string; fast?: boolean },
 ) {
+  // Hover tour advances on a content clock (0.5s photos / video end); keep
+  // page transitions short so they never fight that rhythm.
+  if (options.fast) {
+    return {
+      initial: { opacity: 0, scale: 1 },
+      animate: {
+        opacity: 1,
+        scale: 1,
+        transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] as const },
+      },
+      exit: {
+        opacity: 0,
+        transition: { duration: 0.16, ease: [0.4, 0, 0.2, 1] as const },
+      },
+    }
+  }
   switch (effect) {
     case 'blur':
       return {
@@ -143,6 +160,8 @@ export function CoverMedia({
   enableEffect = true,
   effectSeed = 0,
   preview = false,
+  tour = false,
+  onMediaEnd,
 }: {
   image: GalleryImage
   effect: CoverEffect
@@ -155,21 +174,37 @@ export function CoverMedia({
   effectSeed?: number
   /** Controlled by parent card hover; plays muted live/video when true */
   preview?: boolean
+  /** Multi-page hover tour: report completion so the parent can advance */
+  tour?: boolean
+  /** Fired when the current video/live finishes (or hits the tour time cap) */
+  onMediaEnd?: () => void
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const onMediaEndRef = useRef(onMediaEnd)
+  const mediaSettledRef = useRef(false)
   const [playing, setPlaying] = useState(false)
+  useEffect(() => {
+    onMediaEndRef.current = onMediaEnd
+  }, [onMediaEnd])
+  const notifyMediaEnd = () => {
+    // `ended` and the tour time cap can both fire; advance only once per item.
+    if (mediaSettledRef.current) return
+    mediaSettledRef.current = true
+    onMediaEndRef.current?.()
+  }
   const resolved = useMemo(() => {
-    if (!enableEffect) {
+    if (!enableEffect || tour) {
       return { concrete: 'crossfade' as ConcreteEffect, revealFrom: 'inset(0% 0% 0% 0%)', seed: effectSeed }
     }
     const concrete = pickConcreteEffect(effect)
     const revealFrom = concrete === 'reveal' ? pickRevealFrom() : 'inset(0% 0% 0% 0%)'
     return { concrete, revealFrom, seed: effectSeed }
-  }, [effect, effectSeed, enableEffect])
+  }, [effect, effectSeed, enableEffect, tour])
 
   const motionCfg = buildLayerMotion(resolved.concrete, {
     intervalMs,
     revealFrom: resolved.revealFrom,
+    fast: tour,
   })
   const layerKey = enableEffect
     ? `${image.id}::${resolved.concrete}::${effectSeed}::${resolved.revealFrom}`
@@ -181,21 +216,53 @@ export function CoverMedia({
       video.pause()
       video.currentTime = 0
     }
-    setPlaying(false)
   }
+
+  useEffect(() => {
+    mediaSettledRef.current = false
+  }, [image.id, image.videoSrc, layerKey, preview, tour])
+
+  // Track playback via media events so effects never setState synchronously.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const syncPlaying = () => setPlaying(!video.paused && !video.ended && !video.error)
+    video.addEventListener('play', syncPlaying)
+    video.addEventListener('pause', syncPlaying)
+    video.addEventListener('ended', syncPlaying)
+    video.addEventListener('error', syncPlaying)
+    return () => {
+      video.removeEventListener('play', syncPlaying)
+      video.removeEventListener('pause', syncPlaying)
+      video.removeEventListener('ended', syncPlaying)
+      video.removeEventListener('error', syncPlaying)
+    }
+  }, [image.id, image.videoSrc, layerKey])
 
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
-    if (preview && image.videoSrc) {
-      setPlaying(true)
-      void video.play().catch(() => setPlaying(false))
+    if (!preview || !image.videoSrc) {
+      video.pause()
+      video.currentTime = 0
       return
     }
-    video.pause()
-    video.currentTime = 0
-    setPlaying(false)
-  }, [preview, image.videoSrc, image.id, layerKey])
+    let cancelled = false
+    void video.play().catch(() => {
+      if (cancelled) return
+      // Tour must not stall on autoplay rejection.
+      if (tour) notifyMediaEnd()
+    })
+    if (!tour) return
+    const cap = window.setTimeout(() => {
+      if (cancelled) return
+      notifyMediaEnd()
+    }, TOUR_VIDEO_MAX_MS)
+    return () => {
+      cancelled = true
+      window.clearTimeout(cap)
+    }
+  }, [preview, tour, image.videoSrc, image.id, layerKey])
 
   useEffect(() => () => {
     const video = videoRef.current
@@ -226,8 +293,15 @@ export function CoverMedia({
               poster={image.src}
               muted
               playsInline
-              preload="metadata"
-              onEnded={stopPreview}
+              preload={tour ? 'auto' : 'metadata'}
+              onEnded={() => {
+                if (tour) notifyMediaEnd()
+                else stopPreview()
+              }}
+              onError={() => {
+                if (tour) notifyMediaEnd()
+                else stopPreview()
+              }}
               className="absolute inset-0 h-full w-full select-none transition-opacity duration-200"
               style={{ objectFit, opacity: playing ? 1 : 0 }}
             />
