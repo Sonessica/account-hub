@@ -1,3 +1,4 @@
+ARG RUNTIME_BASE=docker.1ms.run/library/node:22-bookworm-slim
 FROM docker.1ms.run/library/node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -15,7 +16,6 @@ ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 RUN npm run build
 
-ARG RUNTIME_BASE=docker.1ms.run/library/node:22-bookworm-slim
 FROM ${RUNTIME_BASE} AS runner
 WORKDIR /app
 ENV NODE_ENV=production
