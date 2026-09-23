@@ -235,6 +235,8 @@ docker compose logs --tail=50 atchooo-space
 
 Dockerfile 将 FFmpeg 安装在应用文件复制之前。首次构建仍需下载 FFmpeg；后续只修改应用代码时，Docker 可复用该层，无需再次下载。更换基础镜像、修改 FFmpeg 安装步骤、清理构建缓存或在新构建机上构建时，该层仍需重新生成。部署时保留 Docker/BuildKit 构建缓存，避免使用 `--no-cache`。
 
+NAS 若已有包含 FFmpeg 的运行镜像，可先给它打一个固定标签，再在 NAS 的 `.env` 中设置 `ATCHOOO_RUNTIME_BASE` 为该标签。构建会跳过 FFmpeg 安装，复用该镜像作为运行基础层；不要删除这个固定标签。未设置时仍使用标准 Node 镜像并安装 FFmpeg，因此新环境可以独立构建。
+
 当前 `docker-compose.yml` 的公开地址为 `https://space.atchooo.com:2096`。更换域名时需要同步检查 Compose、Dockerfile 中的 `NEXT_PUBLIC_APP_URL` 以及反向代理。
 
 部署更新前应先备份 SQLite 和 `data/media`。不要使用 `docker compose down -v` 删除数据卷，也不要提交 `.env`、`data/` 或部署备份。
