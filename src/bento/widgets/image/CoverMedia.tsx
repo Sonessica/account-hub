@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CoverEffect, GalleryImage } from '../types'
 import { TOUR_VIDEO_MAX_MS } from '../types'
 
@@ -182,11 +182,15 @@ export function CoverMedia({
   const videoRef = useRef<HTMLVideoElement>(null)
   const onMediaEndRef = useRef(onMediaEnd)
   const mediaSettledRef = useRef(false)
+  const currentLayerRef = useRef('')
   const [playing, setPlaying] = useState(false)
   useEffect(() => {
     onMediaEndRef.current = onMediaEnd
   }, [onMediaEnd])
-  const notifyMediaEnd = () => {
+  const notifyMediaEnd = (sourceLayer: string) => {
+    // AnimatePresence keeps the outgoing layer mounted during its exit. Ignore
+    // late ended/error events from that layer after a new item is current.
+    if (sourceLayer !== currentLayerRef.current) return
     // `ended` and the tour time cap can both fire; advance only once per item.
     if (mediaSettledRef.current) return
     mediaSettledRef.current = true
@@ -209,6 +213,9 @@ export function CoverMedia({
   const layerKey = enableEffect
     ? `${image.id}::${resolved.concrete}::${effectSeed}::${resolved.revealFrom}`
     : image.id
+  useLayoutEffect(() => {
+    currentLayerRef.current = layerKey
+  }, [layerKey])
 
   const stopPreview = () => {
     const video = videoRef.current
@@ -251,12 +258,12 @@ export function CoverMedia({
     void video.play().catch(() => {
       if (cancelled) return
       // Tour must not stall on autoplay rejection.
-      if (tour) notifyMediaEnd()
+      if (tour) notifyMediaEnd(layerKey)
     })
     if (!tour) return
     const cap = window.setTimeout(() => {
       if (cancelled) return
-      notifyMediaEnd()
+      notifyMediaEnd(layerKey)
     }, TOUR_VIDEO_MAX_MS)
     return () => {
       cancelled = true
@@ -295,11 +302,11 @@ export function CoverMedia({
               playsInline
               preload={tour ? 'auto' : 'metadata'}
               onEnded={() => {
-                if (tour) notifyMediaEnd()
+                if (tour) notifyMediaEnd(layerKey)
                 else stopPreview()
               }}
               onError={() => {
-                if (tour) notifyMediaEnd()
+                if (tour) notifyMediaEnd(layerKey)
                 else stopPreview()
               }}
               className="absolute inset-0 h-full w-full select-none transition-opacity duration-200"

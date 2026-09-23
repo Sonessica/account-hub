@@ -38,7 +38,15 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     const tourActive = mediaPreview && isMulti
 
     useEffect(() => {
-        const sync = () => setPageVisible(document.visibilityState === 'visible')
+        const sync = () => {
+            const visible = document.visibilityState === 'visible'
+            setPageVisible(visible)
+            if (!visible) {
+                window.clearTimeout(hoverTimer.current)
+                tourGen.current += 1
+                setMediaPreview(false)
+            }
+        }
         sync()
         document.addEventListener('visibilitychange', sync)
         return () => document.removeEventListener('visibilitychange', sync)
