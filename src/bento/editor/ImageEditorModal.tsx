@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GalleryImage, ImageWidgetConfig } from '../widgets/types'
-import { COVER_EFFECT_OPTIONS, DEFAULT_COVER_EFFECT, GALLERY_MAX_IMAGES } from '../widgets/types'
+import { COVER_EFFECT_OPTIONS, GALLERY_MAX_IMAGES } from '../widgets/types'
+import { useGlobalSettings } from './GlobalSettingsProvider'
 import { pairMediaFiles, uploadMedia } from '@/lib/client/upload-image'
 import {
     buildGalleryPatch,
@@ -127,6 +128,7 @@ export function ImageEditorModal({
     onUpdate: (updates: Partial<ImageWidgetConfig>) => void
     onClose: () => void
 }) {
+    const { settings } = useGlobalSettings()
     const gallery = useMemo(() => normalizeImageGallery(widget), [widget])
     const images = gallery.images
     const [previewIndex, setPreviewIndex] = useState(() => {
@@ -415,17 +417,26 @@ export function ImageEditorModal({
                                 }}
                             >
                                 <option value="fixed">固定封面</option>
-                                <option value="random">随机封面（查看页约 15s 切换）</option>
+                                <option value="random">随机封面（查看页定时切换）</option>
                             </select>
                             {images.length <= 1 && (
                                 <span className="text-[11px] font-normal text-black/40">多于 1 张时可开启随机封面；编辑模式始终显示固定封面。</span>
                             )}
                         </label>
 
+                        <label className={labelClass}>随机封面切换间隔：{(widget.coverIntervalMs ?? settings.randomCoverIntervalMs) / 1000} 秒
+                            <input className="w-full accent-black" type="range" min={2} max={120} step={1}
+                                value={(widget.coverIntervalMs ?? settings.randomCoverIntervalMs) / 1000}
+                                disabled={images.length <= 1}
+                                onChange={event => onUpdate({ coverIntervalMs: Number(event.target.value) * 1000 })} />
+                            <button type="button" className="self-start text-[11px] text-black/50 underline"
+                                onClick={() => onUpdate({ coverIntervalMs: undefined })}>使用全站默认值</button>
+                        </label>
+
                         <label className={labelClass}>封面切换特效
                             <select
                                 className={fieldClass}
-                                value={widget.coverEffect || DEFAULT_COVER_EFFECT}
+                                value={widget.coverEffect ?? settings.defaultCoverEffect}
                                 disabled={images.length <= 1}
                                 onChange={event => onUpdate({ coverEffect: event.target.value as ImageWidgetConfig['coverEffect'] })}
                             >
@@ -434,8 +445,10 @@ export function ImageEditorModal({
                                 ))}
                             </select>
                             <span className="text-[11px] font-normal text-black/40">
-                                仅在查看模式、多图且开启随机封面时生效。「每次随机特效」会在 6 种转场中轮换。
+                                查看模式的多图切换使用此效果；悬停导览使用快速淡入。「每次随机特效」会在 6 种转场中轮换。
                             </span>
+                            <button type="button" className="self-start text-[11px] text-black/50 underline"
+                                onClick={() => onUpdate({ coverEffect: undefined })}>使用全站默认值</button>
                         </label>
 
                         <label className={labelClass}>替代文字（图集默认）
@@ -448,11 +461,13 @@ export function ImageEditorModal({
                             <OptionalText value={widget.subtitle} onChange={subtitle => onUpdate({ subtitle })} />
                         </label>
                         <label className={labelClass}>图片填充方式
-                            <select className={fieldClass} value={widget.objectFit || 'cover'}
+                            <select className={fieldClass} value={widget.objectFit ?? settings.defaultImageFit}
                                 onChange={event => onUpdate({ objectFit: event.target.value as ImageWidgetConfig['objectFit'] })}>
                                 <option value="cover">裁切填满</option>
                                 <option value="contain">完整显示</option>
                             </select>
+                            <button type="button" className="self-start text-[11px] text-black/50 underline"
+                                onClick={() => onUpdate({ objectFit: undefined })}>使用全站默认值</button>
                         </label>
                     </div>
                 </div>

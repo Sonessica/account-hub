@@ -6,6 +6,7 @@ import type { WidgetConfig } from '../widgets/types'
 import savingLoader from './SavingLoader.module.css'
 import { AtchoooSplash, SPLASH_DURATION_MS } from './AtchoooSplash'
 import { DEFAULT_SITE_SETTINGS, normalizeSiteSettings, type SiteSettings } from './siteSettings'
+import { useGlobalSettings } from './GlobalSettingsProvider'
 
 type Snapshot = {
   widgets: WidgetConfig[]
@@ -178,12 +179,14 @@ export function PersistentEditorProvider({
   space?: EditorSpace
   showSplash?: boolean
 }) {
+  const { settings } = useGlobalSettings()
+  const playSplash = showSplash && settings.splashEnabled
   const hasCachedSnapshot = snapshotCache.has(space)
   const [state, setState] = useState<GateState>(hasCachedSnapshot ? 'ready' : 'splash')
   const [message, setMessage] = useState('')
   const [initial, setInitial] = useState<Stored | null>(() => snapshotCache.get(space) ?? null)
   const [draft, setDraft] = useState<Snapshot | null>(null)
-  const [splashDone, setSplashDone] = useState(!showSplash)
+  const [splashDone, setSplashDone] = useState(!playSplash)
 
   const load = useCallback(async () => {
     try {
@@ -248,7 +251,7 @@ export function PersistentEditorProvider({
 
   return (
     <>
-      {showSplash && !splashDone && (
+      {playSplash && !splashDone && (
         <AtchoooSplash onDone={() => { setSplashDone(true) }} />
       )}
 

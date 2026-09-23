@@ -167,10 +167,11 @@ Undo/Redo 使用统一快照历史，覆盖创建、删除、复制、内容更�
 
 - 单个媒体卡片可混合保存最多 9 个静态图片、Live Photo 或视频。
 - 支持批量上传、同名照片/MOV 自动配对、拖动排序、删除媒体、双击设置封面。
-- Live Photo 和视频默认显示静态封面；浏览模式悬停约 300ms 后静音预览，灯箱中可完整播放。
+- Live Photo 和视频默认显示静态封面；浏览模式悬停约 300ms 后静音预览，多图导览的静图每张停留 2 秒，灯箱中可完整播放。
 - 支持固定封面或随机封面。
 - 支持 Crossfade、Blur、Drift、Ken Burns、Reveal、Shutter 和随机切换效果。
 - 支持封面切换间隔、标题、副标题与 cover/contain 显示模式。
+- 设置菜单的“媒体与动效”可调整悬停导览停留时间、视频播放上限、预览延迟、随机封面间隔、动效及新卡片默认值；“画布”可调整默认缩放、自动居中和开场动画。这些设置保存在 NAS SQLite 中，四个 Space 共用。卡片上单独设置的值优先于全局默认值。
 - 浏览模式提供 Lightbox 和缩略图导航。
 
 ### Text
@@ -231,6 +232,8 @@ cp .env.example .env
 docker compose up -d --build
 docker compose logs --tail=50 atchooo-space
 ```
+
+Dockerfile 将 FFmpeg 安装在应用文件复制之前。首次构建仍需下载 FFmpeg；后续只修改应用代码时，Docker 可复用该层，无需再次下载。更换基础镜像、修改 FFmpeg 安装步骤、清理构建缓存或在新构建机上构建时，该层仍需重新生成。部署时保留 Docker/BuildKit 构建缓存，避免使用 `--no-cache`。
 
 当前 `docker-compose.yml` 的公开地址为 `https://space.atchooo.com:2096`。更换域名时需要同步检查 Compose、Dockerfile 中的 `NEXT_PUBLIC_APP_URL` 以及反向代理。
 

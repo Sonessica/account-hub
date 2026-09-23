@@ -3,6 +3,7 @@ import 'server-only'
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { DEFAULT_GLOBAL_SETTINGS, normalizeGlobalSettings, type GlobalSettings } from '@/bento/editor/globalSettings'
 
 export interface EditorSnapshot {
   widgets: unknown[]
@@ -80,7 +81,55 @@ function getDatabase() {
       updated_at TEXT NOT NULL
     )
   `)
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS global_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      revision INTEGER NOT NULL,
+      settings TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
   return database
+}
+
+export type StoredGlobalSettings = {
+  settings: GlobalSettings
+  revision: number
+  updatedAt: string | null
+}
+
+export function readGlobalSettings(): StoredGlobalSettings {
+  const row = getDatabase().prepare('SELECT revision, settings, updated_at FROM global_settings WHERE id = 1').get() as
+    | { revision: number; settings: string; updated_at: string }
+    | undefined
+  return row
+    ? { settings: normalizeGlobalSettings(JSON.parse(row.settings)), revision: row.revision, updatedAt: row.updated_at }
+    : { settings: DEFAULT_GLOBAL_SETTINGS, revision: 0, updatedAt: null }
+}
+
+export function saveGlobalSettings(value: GlobalSettings, expectedRevision: number): StoredGlobalSettings | 'conflict' {
+  const db = getDatabase()
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const row = db.prepare('SELECT revision FROM global_settings WHERE id = 1').get() as { revision: number } | undefined
+    if ((row?.revision ?? 0) !== expectedRevision) {
+      db.exec('ROLLBACK')
+      return 'conflict'
+    }
+    const revision = expectedRevision + 1
+    const updatedAt = new Date().toISOString()
+    const settings = normalizeGlobalSettings(value)
+    db.prepare(`INSERT INTO global_settings (id, revision, settings, updated_at)
+      VALUES (1, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET revision = excluded.revision,
+      settings = excluded.settings, updated_at = excluded.updated_at`)
+      .run(revision, JSON.stringify(settings), updatedAt)
+    db.exec('COMMIT')
+    return { settings, revision, updatedAt }
+  } catch (error) {
+    db.exec('ROLLBACK')
+    throw error
+  }
 }
 
 export function readEditor(space = 'home'): StoredEditor | null {

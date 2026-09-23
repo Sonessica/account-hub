@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ProfileData } from './EditorContext'
 import { uploadImage } from '@/lib/client/upload-image'
+import { useGlobalSettings } from './GlobalSettingsProvider'
+import { COVER_EFFECT_OPTIONS } from '../widgets/types'
 import {
   getCanvasZoom,
   recenterCanvas,
@@ -19,18 +21,20 @@ const labelClass = 'grid gap-1.5 text-xs font-medium text-black/60'
 const btnClass = 'rounded-xl bg-black px-3 py-2.5 text-sm font-medium text-white hover:bg-black/80'
 const btnGhostClass = 'rounded-xl border border-black/15 px-3 py-2.5 text-sm font-medium text-black hover:bg-black/5'
 
-export const APP_VERSION = '0.7.1'
+export const APP_VERSION = '0.7.2'
 
-type Tab = 'profile' | 'view' | 'data' | 'about'
+type Tab = 'profile' | 'playback' | 'view' | 'data' | 'about'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'profile', label: '个人资料' },
+  { id: 'playback', label: '媒体与动效' },
   { id: 'view', label: '画布' },
   { id: 'data', label: '数据' },
   { id: 'about', label: '关于' },
 ]
 
 function CanvasZoomControls() {
+  const { settings, updateSettings } = useGlobalSettings()
   const zoom = useSyncExternalStore(subscribeCanvasZoom, getCanvasZoom, () => 1)
   const percent = Math.round(zoom * 100)
 
@@ -71,14 +75,75 @@ function CanvasZoomControls() {
         <span>视图</span>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={btnGhostClass} onClick={() => recenterCanvas()}>居中锚点</button>
-          <button type="button" className={btnGhostClass} onClick={() => resetCanvasView()}>恢复默认视图</button>
+          <button type="button" className={btnGhostClass} onClick={() => resetCanvasView(settings.defaultCanvasZoom)}>恢复默认视图</button>
         </div>
         <span className="text-[11px] font-normal text-black/45">
-          首页以搜索框为中心，其他空间以画布原点为中心；切换空间时会自动居中。
+          首页以搜索框为中心，其他空间以画布原点为中心；是否自动居中可在下方设置。
         </span>
       </div>
+      <label className={labelClass}>默认画布缩放：{Math.round(settings.defaultCanvasZoom * 100)}%
+        <input type="range" min={35} max={180} step={5}
+          value={Math.round(settings.defaultCanvasZoom * 100)}
+          onChange={(e) => updateSettings({ defaultCanvasZoom: Number(e.target.value) / 100 })}
+          className="w-full accent-black" />
+        <span className="text-[11px] font-normal text-black/45">没有本地视图记录时使用；“恢复默认视图”也会采用此值。</span>
+      </label>
+      <label className="flex items-center gap-2 text-sm text-black/70">
+        <input type="checkbox" checked={settings.autoRecenter}
+          onChange={(e) => updateSettings({ autoRecenter: e.target.checked })} />
+        进入 Space 时自动居中
+      </label>
+      <label className="flex items-center gap-2 text-sm text-black/70">
+        <input type="checkbox" checked={settings.splashEnabled}
+          onChange={(e) => updateSettings({ splashEnabled: e.target.checked })} />
+        每次浏览器会话显示开场动画
+      </label>
     </div>
   )
+}
+
+function PlaybackSettings() {
+  const { settings, updateSettings, saveState } = useGlobalSettings()
+  return <div className="grid gap-5">
+    <p className="text-sm text-black/55">以下设置在四个 Space 共用，修改后自动保存到 NAS。</p>
+    {([
+      ['photoDwellMs', '悬停导览：每张静图停留', 0.5, 10, 0.5],
+      ['videoMaxMs', '悬停导览：视频最多播放', 1, 30, 1],
+      ['hoverDelayMs', '启动悬停预览的延迟', 0, 2, 0.1],
+      ['randomCoverIntervalMs', '新图集随机封面间隔', 2, 120, 1],
+    ] as const).map(([key, label, min, max, step]) => (
+      <label key={key} className={labelClass}>{label}：{settings[key] / 1000} 秒
+        <input className="w-full accent-black" type="range" min={min} max={max} step={step}
+          value={settings[key] / 1000}
+          onChange={(e) => updateSettings({ [key]: Number(e.target.value) * 1000 })} />
+      </label>
+    ))}
+    <label className="flex items-center gap-2 text-sm text-black/70">
+      <input type="checkbox" checked={settings.hoverVideoPreview}
+        onChange={(e) => updateSettings({ hoverVideoPreview: e.target.checked })} />
+      悬停时播放视频与 Live Photo
+    </label>
+    <label className="flex items-center gap-2 text-sm text-black/70">
+      <input type="checkbox" checked={settings.reducedMotion}
+        onChange={(e) => updateSettings({ reducedMotion: e.target.checked })} />
+      减少图集切换动效
+    </label>
+    <label className={labelClass}>新图集默认切换特效
+      <select className={fieldClass} value={settings.defaultCoverEffect}
+        onChange={(e) => updateSettings({ defaultCoverEffect: e.target.value as typeof settings.defaultCoverEffect })}>
+        {COVER_EFFECT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
+    <label className={labelClass}>新图片卡片默认填充
+      <select className={fieldClass} value={settings.defaultImageFit}
+        onChange={(e) => updateSettings({ defaultImageFit: e.target.value as typeof settings.defaultImageFit })}>
+        <option value="cover">裁切填满</option>
+        <option value="contain">完整显示</option>
+      </select>
+    </label>
+    <p className="text-xs text-black/45">已有卡片明确设置的切换间隔、特效和填充方式保持原样，可在单张卡片里修改。</p>
+    {saveState === 'saving' && <span className="text-xs text-black/45">正在保存设置…</span>}
+  </div>
 }
 
 export function SettingsModal({
@@ -166,7 +231,7 @@ export function SettingsModal({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-black/35">ATCHOOO</p>
               <h2 className="mt-1 text-lg font-semibold">
-                {tab === 'profile' ? '个人资料' : tab === 'view' ? '画布视图' : tab === 'data' ? '数据' : '关于'}
+                {tab === 'profile' ? '个人资料' : tab === 'playback' ? '媒体与动效' : tab === 'view' ? '画布视图' : tab === 'data' ? '数据' : '关于'}
               </h2>
             </div>
             <button type="button" onClick={onClose} aria-label="关闭设置"
@@ -203,6 +268,7 @@ export function SettingsModal({
             )}
 
             {tab === 'view' && <CanvasZoomControls />}
+            {tab === 'playback' && <PlaybackSettings />}
 
             {tab === 'data' && (
               <div className="grid gap-4">

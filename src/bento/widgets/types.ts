@@ -116,7 +116,7 @@ export const GALLERY_MAX_IMAGES = 9
 export const DEFAULT_COVER_INTERVAL_MS = 15_000
 export const DEFAULT_COVER_EFFECT: CoverEffect = 'crossfade'
 /** Hover-tour dwell for still photos before advancing. */
-export const TOUR_PHOTO_DWELL_MS = 500
+export const TOUR_PHOTO_DWELL_MS = 2_000
 /** Hover-tour cap so long videos cannot stall the gallery. */
 export const TOUR_VIDEO_MAX_MS = 5000
 /** Delay before hover preview / tour starts. */

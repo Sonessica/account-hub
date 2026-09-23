@@ -7,12 +7,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BentoCard } from '@/bento/core'
+import { useGlobalSettings } from '@/bento/editor/GlobalSettingsProvider'
 import type { ImageWidgetConfig, WidgetProps } from '../types'
-import {
-    DEFAULT_COVER_EFFECT,
-    HOVER_PREVIEW_DELAY_MS,
-    TOUR_PHOTO_DWELL_MS,
-} from '../types'
 import { normalizeImageGallery, resolveCoverIndex } from './gallery'
 import { CoverMedia } from './CoverMedia'
 
@@ -20,9 +16,11 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     config,
     isEditing = false,
 }) => {
+    const { settings } = useGlobalSettings()
     const { alt, title, subtitle, size, objectFit } = config
     const gallery = useMemo(() => normalizeImageGallery(config), [config])
     const { images } = gallery
+    const coverIntervalMs = config.coverIntervalMs ?? settings.randomCoverIntervalMs
 
     const [liveIndex, setLiveIndex] = useState(() => resolveCoverIndex(config))
     const [effectSeed, setEffectSeed] = useState(0)
@@ -58,7 +56,7 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
         // Idle clock pauses while hover tour / video preview owns the gallery.
         if (mediaPreview) return
         if (gallery.coverMode !== 'random' || images.length <= 1) return
-        const interval = gallery.coverIntervalMs
+        const interval = coverIntervalMs
         const offset = Math.floor(Math.random() * interval)
         let intervalId: number | undefined
         const timeoutId = window.setTimeout(() => {
@@ -71,7 +69,7 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
             window.clearTimeout(timeoutId)
             if (intervalId !== undefined) window.clearInterval(intervalId)
         }
-    }, [isEditing, pageVisible, mediaPreview, gallery.coverMode, gallery.coverIntervalMs, images.length])
+    }, [isEditing, pageVisible, mediaPreview, gallery.coverMode, coverIntervalMs, images.length])
 
     const displayIndex = useMemo(() => {
         if (isEditing || images.length <= 1) {
@@ -93,8 +91,8 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
 
     const cover = images[displayIndex]
     const hasOverlay = title || subtitle
-    const enableEffect = !isEditing && images.length > 1
-    const configuredEffect = gallery.coverEffect || DEFAULT_COVER_EFFECT
+    const enableEffect = !isEditing && !settings.reducedMotion && images.length > 1
+    const configuredEffect = config.coverEffect ?? settings.defaultCoverEffect
 
     useEffect(() => {
         return () => window.clearTimeout(hoverTimer.current)
@@ -119,24 +117,24 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
     useEffect(() => {
         if (!tourActive) return
         const current = images[displayIndex]
-        if (!current || current.videoSrc) return
+        if (!current || (current.videoSrc && settings.hoverVideoPreview)) return
         const gen = tourGen.current
         activeTourGen.current = gen
-        const timer = window.setTimeout(() => advanceTour(gen), TOUR_PHOTO_DWELL_MS)
+        const timer = window.setTimeout(() => advanceTour(gen), settings.photoDwellMs)
         return () => window.clearTimeout(timer)
-    }, [tourActive, displayIndex, images, advanceTour])
+    }, [tourActive, displayIndex, images, advanceTour, settings.photoDwellMs, settings.hoverVideoPreview])
 
     // Keep activeTourGen aligned when the tour lands on a video/live item.
     useEffect(() => {
         if (!tourActive) return
         const current = images[displayIndex]
-        if (current?.videoSrc) activeTourGen.current = tourGen.current
-    }, [tourActive, displayIndex, images])
+        if (current?.videoSrc && settings.hoverVideoPreview) activeTourGen.current = tourGen.current
+    }, [tourActive, displayIndex, images, settings.hoverVideoPreview])
 
     const onCardPointerEnter = () => {
         if (isEditing) return
         const multi = images.length > 1
-        if (!multi && !cover?.videoSrc) return
+        if (!multi && (!cover?.videoSrc || !settings.hoverVideoPreview)) return
         window.clearTimeout(hoverTimer.current)
         hoverTimer.current = window.setTimeout(() => {
             if (multi) {
@@ -145,7 +143,7 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
                 setLiveIndex(displayIndexRef.current)
             }
             setMediaPreview(true)
-        }, HOVER_PREVIEW_DELAY_MS)
+        }, settings.hoverDelayMs)
     }
 
     const onCardPointerLeave = () => {
@@ -173,13 +171,14 @@ export const ImageWidget: React.FC<WidgetProps<ImageWidgetConfig>> = ({
             <CoverMedia
                 image={cover}
                 effect={configuredEffect}
-                objectFit={objectFit || 'cover'}
+                objectFit={objectFit ?? settings.defaultImageFit}
                 alt={cover.alt || alt || title || ''}
-                intervalMs={gallery.coverIntervalMs}
+                intervalMs={coverIntervalMs}
                 enableEffect={enableEffect}
                 effectSeed={effectSeed}
-                preview={mediaPreview}
+                preview={mediaPreview && settings.hoverVideoPreview}
                 tour={tourActive}
+                videoMaxMs={settings.videoMaxMs}
                 onMediaEnd={onMediaEnd}
             />
 
@@ -231,9 +230,6 @@ export function createImageWidgetConfig(
         images: [{ id: imageId, src }],
         coverMode: 'fixed',
         coverId: imageId,
-        coverIntervalMs: 15_000,
-        coverEffect: DEFAULT_COVER_EFFECT,
-        objectFit: 'cover',
         ...options,
     }
 }

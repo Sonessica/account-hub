@@ -7,6 +7,7 @@ import { SettingsModal } from '@/bento/editor/SettingsModal'
 import { InfiniteCanvas, assignCanvasPositions } from '@/bento/editor/InfiniteCanvas'
 import { autoLayoutWidgets, type AutoLayoutMode } from '@/bento/editor/canvasPlacement'
 import { PersistentEditorProvider } from '@/bento/editor/PersistentEditorProvider'
+import { GlobalSettingsProvider } from '@/bento/editor/GlobalSettingsProvider'
 import { RadialNavigation } from '@/components/site/RadialNavigation'
 import { resolveCanvasDrop } from '@/bento/editor/canvasPlacement'
 import type { WidgetConfig } from '@/bento/widgets/types'
@@ -206,10 +207,12 @@ export function BentoEditorPage({
     showSplash?: boolean
 }) {
     return (
-        <PersistentEditorProvider key={space} space={space} showSplash={showSplash}>
-            <EditorView space={space}>
-                <HubShell space={space} />
-            </EditorView>
-        </PersistentEditorProvider>
+        <GlobalSettingsProvider>
+            <PersistentEditorProvider key={space} space={space} showSplash={showSplash}>
+                <EditorView space={space}>
+                    <HubShell space={space} />
+                </EditorView>
+            </PersistentEditorProvider>
+        </GlobalSettingsProvider>
     )
 }

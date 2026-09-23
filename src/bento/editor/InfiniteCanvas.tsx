@@ -15,6 +15,7 @@ import type { GalleryImage, ImageWidgetConfig, WidgetConfig, WidgetSize } from '
 import { WIDGET_SIZES } from '@/bento/widgets/types'
 import { resolveCanvasDrop, resolveCanvasResize, SEARCH_COLS } from './canvasPlacement'
 import { normalizeImageGallery, resolveCoverIndex } from '@/bento/widgets/image/gallery'
+import { useGlobalSettings } from './GlobalSettingsProvider'
 import {
   bindCanvasRecenter,
   bindCanvasZoom,
@@ -90,20 +91,27 @@ export function InfiniteCanvas({
   space = 'home',
   onExternalDrop,
 }: CanvasProps) {
+  const { settings } = useGlobalSettings()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const savedView = useRef<{ zoom: number } | null>(null)
+  const savedView = useRef<{ zoom: number; pan: { x: number; y: number } } | null>(null)
   if (savedView.current === null && typeof window !== 'undefined') {
     try {
       const raw =
         localStorage.getItem(`atchooo-space-view-${space}`) ||
         localStorage.getItem(`account-hub-view-${space}`) ||
         'null'
-      const parsed = JSON.parse(raw) as { zoom?: number } | null
-      savedView.current = { zoom: typeof parsed?.zoom === 'number' ? parsed.zoom : 1 }
-    } catch { savedView.current = { zoom: 1 } }
+      const parsed = JSON.parse(raw) as { zoom?: number; pan?: { x?: number; y?: number } } | null
+      savedView.current = {
+        zoom: typeof parsed?.zoom === 'number' ? clampZoom(parsed.zoom) : settings.defaultCanvasZoom,
+        pan: {
+          x: typeof parsed?.pan?.x === 'number' && Number.isFinite(parsed.pan.x) ? parsed.pan.x : 0,
+          y: typeof parsed?.pan?.y === 'number' && Number.isFinite(parsed.pan.y) ? parsed.pan.y : 0,
+        },
+      }
+    } catch { savedView.current = { zoom: settings.defaultCanvasZoom, pan: { x: 0, y: 0 } } }
   }
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [zoom, setZoom] = useState(() => savedView.current?.zoom || 1)
+  const [pan, setPan] = useState(() => savedView.current?.pan || { x: 0, y: 0 })
+  const [zoom, setZoom] = useState(() => savedView.current?.zoom ?? settings.defaultCanvasZoom)
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
   const [query, setQuery] = useState('')
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -145,11 +153,13 @@ export function InfiniteCanvas({
 
   // Always re-anchor on mount / space switch / search visibility / manual centerVersion
   useEffect(() => {
-    recenterView()
+    const shouldCenter = settings.autoRecenter || (centeredVersion.current !== null && centeredVersion.current !== centerVersion)
     centeredVersion.current = centerVersion
+    if (!shouldCenter) return
+    recenterView()
     const timer = window.setTimeout(recenterView, 80)
     return () => window.clearTimeout(timer)
-  }, [recenterView, centerVersion, space, showSearch])
+  }, [recenterView, centerVersion, space, showSearch, settings.autoRecenter])
 
   useEffect(() => {
     const timer = window.setTimeout(() => localStorage.setItem(`atchooo-space-view-${space}`, JSON.stringify({ pan, zoom })), 180)
@@ -183,12 +193,12 @@ export function InfiniteCanvas({
       setViewportSize({ width: entry.contentRect.width, height: entry.contentRect.height })
       if (first) {
         first = false
-        recenterView()
+        if (settings.autoRecenter) recenterView()
       }
     })
     observer.observe(el)
     return () => observer.disconnect()
-  }, [recenterView])
+  }, [recenterView, settings.autoRecenter])
 
   const cullPan = useMemo(() => {
     const q = STEP / 2

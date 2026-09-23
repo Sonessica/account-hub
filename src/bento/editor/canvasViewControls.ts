@@ -56,8 +56,8 @@ export function recenterCanvas() {
   applyRecenter?.()
 }
 
-export function resetCanvasView() {
-  applyZoom?.(1)
+export function resetCanvasView(defaultZoom = 1) {
+  applyZoom?.(defaultZoom)
   applyRecenter?.()
 }
 

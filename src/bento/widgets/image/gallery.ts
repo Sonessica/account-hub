@@ -106,8 +106,8 @@ export function buildGalleryPatch(
     images: nextImages,
     coverId: nextCoverId,
     coverMode,
-    coverIntervalMs: prev.coverIntervalMs || DEFAULT_COVER_INTERVAL_MS,
-    coverEffect: overrides.coverEffect || prev.coverEffect || DEFAULT_COVER_EFFECT,
+    coverIntervalMs: prev.coverIntervalMs,
+    coverEffect: overrides.coverEffect ?? prev.coverEffect,
     src: cover?.src || '',
   }
 }

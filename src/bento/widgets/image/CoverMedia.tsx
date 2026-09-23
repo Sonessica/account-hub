@@ -3,7 +3,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CoverEffect, GalleryImage } from '../types'
-import { TOUR_VIDEO_MAX_MS } from '../types'
 
 const CONCRETE_EFFECTS = [
   'crossfade',
@@ -40,7 +39,7 @@ function buildLayerMotion(
   effect: ConcreteEffect,
   options: { intervalMs: number; revealFrom: string; fast?: boolean },
 ) {
-  // Hover tour advances on a content clock (0.5s photos / video end); keep
+  // Hover tour advances on a content clock (2s photos / video end); keep
   // page transitions short so they never fight that rhythm.
   if (options.fast) {
     return {
@@ -161,6 +160,7 @@ export function CoverMedia({
   effectSeed = 0,
   preview = false,
   tour = false,
+  videoMaxMs = 5_000,
   onMediaEnd,
 }: {
   image: GalleryImage
@@ -176,6 +176,7 @@ export function CoverMedia({
   preview?: boolean
   /** Multi-page hover tour: report completion so the parent can advance */
   tour?: boolean
+  videoMaxMs?: number
   /** Fired when the current video/live finishes (or hits the tour time cap) */
   onMediaEnd?: () => void
 }) {
@@ -264,12 +265,12 @@ export function CoverMedia({
     const cap = window.setTimeout(() => {
       if (cancelled) return
       notifyMediaEnd(layerKey)
-    }, TOUR_VIDEO_MAX_MS)
+    }, videoMaxMs)
     return () => {
       cancelled = true
       window.clearTimeout(cap)
     }
-  }, [preview, tour, image.videoSrc, image.id, layerKey])
+  }, [preview, tour, videoMaxMs, image.videoSrc, image.id, layerKey])
 
   useEffect(() => () => {
     const video = videoRef.current
@@ -296,11 +297,11 @@ export function CoverMedia({
           {image.videoSrc && (
             <video
               ref={videoRef}
-              src={image.videoSrc}
+              src={preview ? image.videoSrc : undefined}
               poster={image.src}
               muted
               playsInline
-              preload={tour ? 'auto' : 'metadata'}
+              preload={preview && tour ? 'auto' : 'none'}
               onEnded={() => {
                 if (tour) notifyMediaEnd(layerKey)
                 else stopPreview()
